@@ -22,7 +22,11 @@ function AppContent() {
       ) : (
         <>
           <ChatInterface />
-
+          <div className="admin-link-container">
+            <Link to="/admin" className="admin-link-button" title="Go to Admin Dashboard">
+              ⚙️ Admin Panel
+            </Link>
+          </div>
         </>
       )}
     </div>
