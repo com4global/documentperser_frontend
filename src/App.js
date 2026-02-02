@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 // Pages & Components
 import LandingPage from './pages/LandingPage';
-import Home from './pages/Home';
+import home from './pages/home';
 import LoginPage from './pages/LoginPage'; // You'll need to create this
 import SignupPage from './pages/SignupPage'; // You'll need to create this
 import ChatInterface from './ChatInterface';
@@ -22,7 +22,7 @@ function App() {
         <Routes>
           {/* 1. Default Landing Page */}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/home" element={<home />} />
 
           {/* 2. Authentication Flow */}
           {/* <Route path="/signup" element={<SignupPage />} />

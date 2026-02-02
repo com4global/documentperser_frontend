@@ -8,7 +8,7 @@ import FeaturesTabsSection from '../components/FeaturesTabsSection';
 import PricingSection from '../components/PricingSection'; 
 import Footer from '../components/Footer';
 
-const Home = () => {
+const home = () => {
     // Debugging logs - if any of these show "undefined" or "{}", that's the broken file
     console.log("HeroSection:", HeroSection);
     console.log("TrustBadgesAndAISection:", TrustBadgesAndAISection);
@@ -28,4 +28,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default home;
