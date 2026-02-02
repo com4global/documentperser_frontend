@@ -201,3 +201,61 @@
 .messages-container::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
+
+/* Citations / Sources Styling */
+.sources-list {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #e0e0e0;
+}
+
+.source-title {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  letter-spacing: 0.5px;
+}
+
+.source-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.source-badge {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Ensure sources look good in user bubbles too, just in case */
+.message-content.user .source-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+}
+
+.message-content.user .source-title {
+  color: rgba(255, 255, 255, 0.7);
+}
+.source-badge.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-badge.clickable:hover {
+  background-color: #e0e7ff; /* Light blue tint */
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
