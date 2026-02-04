@@ -1,6 +1,7 @@
 // Application constants
 export const APP_CONFIG = {
-  API_URL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  API_URL: process.env.REACT_APP_API_URL || 'https://ragsysetm-backendpart.onrender.com',
+  // 'http://localhost:8000',
   REFRESH_INTERVAL: 10000, // 10 seconds
   MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
   NOTIFICATION_DURATION: 5000,

@@ -68,7 +68,9 @@ function ChatInterface() {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/chat', {
+      // const response = await axios.post('http://localhost:8000/chat', 
+        const response = await axios.post('https://ragsysetm-backendpart.onrender.com/chat',
+        {
         query: inputValue
       });
 

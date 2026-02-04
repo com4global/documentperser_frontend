@@ -10,6 +10,10 @@ import ChatInterface from './ChatInterface';
 import AdminDashboard from './components/AdminDashboard';
 
 import './App.css';
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/" replace />;
+};
 
 function App() {
   // Logic tip: In a real app, you'd check a token here to protect routes
