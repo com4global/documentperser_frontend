@@ -953,6 +953,11 @@
 //   );
 // }
 
+
+
+
+
+
 // import { useNavigate } from 'react-router-dom';
 // import React, { useState, useEffect, useRef } from 'react';
 // import '../Styles/AdminDashboard.css';
@@ -1655,9 +1660,9 @@ const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 const [showDemoModal, setShowDemoModal] = useState(false); // Modal control
 const videoRef = useRef(null);
 const DEMO_VIDEOS = [
-  { id: 1, title: 'Platform Overview', url: 'https://a8on9nfkc9ef6xmg.public.blob.vercel-storage.com/videofolder/advertiseA.MP4' },
-  { id: 2, title: 'AI Features', url: 'https://a8on9nfkc9ef6xmg.public.blob.vercel-storage.com/videofolder/advertiseb.MP4' },
-  { id: 3, title: 'Enterprise Workflow', url: 'https://a8on9nfkc9ef6xmg.public.blob.vercel-storage.com/videofolder/advertisec.MP4' }
+  { id: 1, title: 'Platform Overview', url: '/advertiseA.mp4' },
+  { id: 2, title: 'AI Features', url: '/advertiseb.mp4' },
+  { id: 3, title: 'Enterprise Workflow', url: '/advertisec.mp4' }
 ];
 
 // Professional Video Rotation Logic
