@@ -1,53 +1,109 @@
+/**
+ * Main App Component with Authentication
+ */
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Pages & Components
 import LandingPage from './pages/LandingPage';
-import home from './pages/home';
-import LoginPage from './pages/LoginPage'; // You'll need to create this
-import SignupPage from './pages/SignupPage'; // You'll need to create this
 import ChatInterface from './ChatInterface';
-import AdminDashboard from './components/AdminDashboard';
 
 import './App.css';
+
+// Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/" replace />;
+  const token = localStorage.getItem('access_token');
+  const user = localStorage.getItem('user');
+  
+  if (!token || !user) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
 };
 
 function App() {
-  // Logic tip: In a real app, you'd check a token here to protect routes
-  
-  const isAuthenticated = !!localStorage.getItem('token'); 
-
   return (
     <Router>
-      <div className="App">
-        <Routes>
-          {/* 1. Default Landing Page */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/home" element={<home />} />
+      <AuthProvider>
+        <div className="App">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
 
-          {/* 2. Authentication Flow */}
-          {/* <Route path="/signup" element={<SignupPage />} />
-          <Route path="/login" element={<LoginPage />} /> */}
-          <Route path="/chat"
-          
-           element={isAuthenticated ? <ChatInterface /> : <Navigate to="/" />} 
-           />
+            {/* Protected Routes */}
+            <Route 
+              path="/chat" 
+              element={
+                <ProtectedRoute>
+                  <ChatInterface />
+                </ProtectedRoute>
+              } 
+            />
 
-          {/* 4. Admin Management */}
-          {/* <Route path="/admin" element={<AdminDashboard />} /> */}
-
-          {/* Catch-all: Redirect unknown routes to Landing */}
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </div>
+            {/* Catch-all: Redirect unknown routes to Landing */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </AuthProvider>
     </Router>
   );
 }
 
 export default App;
+
+// import React from 'react';
+// import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+// // Pages & Components
+// import LandingPage from './pages/LandingPage';
+// import home from './pages/home';
+// import LoginPage from './pages/LoginPage'; // You'll need to create this
+// import SignupPage from './pages/SignupPage'; // You'll need to create this
+// import ChatInterface from './ChatInterface';
+// import AdminDashboard from './components/AdminDashboard';
+
+// import './App.css';
+// const ProtectedRoute = ({ children }) => {
+//   const token = localStorage.getItem('token');
+//   return token ? children : <Navigate to="/" replace />;
+// };
+
+// function App() {
+//   // Logic tip: In a real app, you'd check a token here to protect routes
+  
+//   const isAuthenticated = !!localStorage.getItem('token'); 
+
+//   return (
+//     <Router>
+//       <div className="App">
+//         <Routes>
+//           {/* 1. Default Landing Page */}
+//           <Route path="/" element={<LandingPage />} />
+//           <Route path="/home" element={<home />} />
+
+//           {/* 2. Authentication Flow */}
+//           {/* <Route path="/signup" element={<SignupPage />} />
+//           <Route path="/login" element={<LoginPage />} /> */}
+//           <Route path="/chat"
+          
+//            element={isAuthenticated ? <ChatInterface /> : <Navigate to="/" />} 
+//            />
+
+//           {/* 4. Admin Management */}
+//           {/* <Route path="/admin" element={<AdminDashboard />} /> */}
+
+//           {/* Catch-all: Redirect unknown routes to Landing */}
+//           <Route path="*" element={<Navigate to="/" />} />
+//         </Routes>
+//       </div>
+//     </Router>
+//   );
+// }
+
+// export default App;
 
 // import React from 'react';
 // import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';

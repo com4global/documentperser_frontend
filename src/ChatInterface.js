@@ -1,8 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminDashboard from './components/AdminDashboard';
+import { APP_CONFIG } from './utils/constants';
+
+const API_URL = APP_CONFIG.API_URL || 'http://localhost:10000';
+console.log('Using API URL:', API_URL); // Debug log to verify API URL
 
 function ChatInterface() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -25,11 +30,16 @@ function ChatInterface() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [conversationHistory, setConversationHistory] = useState([]);
   const messagesEndRef = useRef(null);
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/');
+ const handleLogout = async () => {
+    console.log('Logging out from ChatInterface...');
+    console.log('Access Token:', localStorage.getItem('access_token'));
+    console.log('Refresh Token:', localStorage.getItem('refresh_token'));
+    
+    await logout(); // This will call AuthContext logout
+    // Navigation is handled by AuthContext
   };
 
   const scrollToBottom = () => {
@@ -43,7 +53,7 @@ function ChatInterface() {
   const handleOpenSource = (source, messageText) => {
     if (!source || !source.path) return;
     const fileName = source.path.split('\\').pop();
-    const baseUrl = `http://localhost:8000/static_files/${encodeURIComponent(fileName)}`;
+    const baseUrl = `${API_URL}/static_files/${encodeURIComponent(fileName)}`;
     const pageNumber = source.page.replace(/\D/g, '');
     window.open(`${baseUrl}#page=${pageNumber}`, '_blank');
   };
@@ -68,11 +78,16 @@ function ChatInterface() {
     setLoading(true);
 
     try {
-      // const response = await axios.post('http://localhost:8000/chat', 
-        const response = await axios.post('https://ragsysetm-backendpart.onrender.com/chat',
+     // const response = await axios.post('http://127.0.0.1:10000/chat', 
+        const response = await axios.post(`${API_URL}/chat`,
         {
         query: inputValue
-      });
+      },
+    {
+      headers:{
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    });
 
       const botMessage = {
         id: Date.now() + 1,
@@ -85,6 +100,12 @@ function ChatInterface() {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error('Error:', error);
+      
+      // ✅ Handle 401 errors by logging out
+      if (error.response?.status === 401) {
+        await handleLogout();
+        return;
+      }
       const errorMessage = {
         id: Date.now() + 2,
         text: 'I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.',
