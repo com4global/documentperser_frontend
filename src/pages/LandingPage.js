@@ -1641,27 +1641,34 @@
 
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import AuthModal from '../components/AuthModal';
+//import { useAuth } from '../contexts/AuthContext';
+//import AuthModal from '../components/AuthModal';
 import '../Styles/AdminDashboard.css';
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('signin');
+  //const [showAuthModal, setShowAuthModal] = useState(false);
+  //const [authMode, setAuthMode] = useState('signin');
   const [currentFeature, setCurrentFeature] = useState(0);
   const [hoveredPricing, setHoveredPricing] = useState(null);
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  //const { user, isAuthenticated } = useAuth();
   
   // Redirect to chat if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/chat');
-    }
-  }, [isAuthenticated, navigate]);
-
+  // useEffect(() => {
+  //   if (isAuthenticated) {
+  //     navigate('/chat');
+  //   }
+  // }, [isAuthenticated, navigate]);
+  const handleStartTrial = () => {
+    navigate('/chat');
+  };
+useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   // Video Demo State
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -1710,6 +1717,15 @@ export default function LandingPage() {
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [showDemoModal]);
+
+
+
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // (Rest of your original arrays: models, features, pricingPlans, stats remain the same)
   const models = [
@@ -1861,7 +1877,7 @@ export default function LandingPage() {
   }, []);
 
   const handleAuthSuccess = () => {
-    setShowAuthModal(false);
+    // setShowAuthModal(false);
     // AuthContext will handle the redirect
   };
 
@@ -1908,8 +1924,8 @@ export default function LandingPage() {
             <a href="#docs" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }}>Docs</a>
             <button 
               onClick={() => { 
-                setAuthMode('signin'); 
-                setShowAuthModal(true); 
+                // setAuthMode('signin'); 
+                // setShowAuthModal(true); 
               }} 
               style={{ background: 'none', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
             >
@@ -1917,8 +1933,10 @@ export default function LandingPage() {
             </button>
             <button 
               onClick={() => { 
-                setAuthMode('signup'); 
-                setShowAuthModal(true); 
+                //handleStartTrial
+                // setAuthMode('signup'); 
+                // setShowAuthModal(true); 
+                handleStartTrial();
               }} 
               style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)' }}
             >
@@ -1987,8 +2005,8 @@ export default function LandingPage() {
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '4rem', animation: 'fadeInUp 1.4s ease' }}>
             <button 
               onClick={() => { 
-                setAuthMode('signup'); 
-                setShowAuthModal(true); 
+                // setAuthMode('signup'); 
+                // setShowAuthModal(true); 
               }} 
               style={{
                 background: 'linear-gradient(135deg, #667eea, #764ba2)',
@@ -2067,11 +2085,11 @@ export default function LandingPage() {
       {/* I'm keeping them brief here for space, but they're identical to your original */}
 
       {/* Auth Modal - NEW COMPONENT */}
-      <AuthModal 
+      {/* <AuthModal 
         show={showAuthModal} 
         onClose={() => setShowAuthModal(false)}
         initialMode={authMode}
-      />
+      /> */}
 
       {/* Demo Video Modal remains the same */}
       {/* Footer remains the same */}
