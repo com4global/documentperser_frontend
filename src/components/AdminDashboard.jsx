@@ -67,7 +67,7 @@ export default function AdminDashboard() {
   const fetchFiles = async () => {
     try {
       const data = await apiService.fetchFiles();
-      setFiles(data.files || []);
+      setFiles(Array.isArray(data) ? data : (data && data.files) || []);
     } catch (error) {
       console.error('Error fetching files:', error);
     }
@@ -126,6 +126,30 @@ export default function AdminDashboard() {
         STATUS_TYPES.ERROR
       );
     } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadAndProcess = async (type, file, mediaType, onProgress) => {
+    if (type !== 'file' && type !== 'media') return;
+    setUploading(true);
+    showNotification('Uploading...', STATUS_TYPES.PROCESSING);
+
+    try {
+      const uploadResult = await apiService.uploadFile(file, onProgress);
+      const filename = uploadResult?.file_name ?? uploadResult?.filename ?? uploadResult?.file?.file_name ?? file?.name;
+      setSelectedFile(null);
+      await Promise.all([fetchFiles(), fetchStats()]);
+      if (!filename) {
+        showNotification('✅ File uploaded. Process it from the list below.', STATUS_TYPES.SUCCESS);
+        setUploading(false);
+        return;
+      }
+      showNotification(`Chunking & saving ${filename} to DB...`, STATUS_TYPES.PROCESSING);
+      setUploading(false);
+      await handleProcessFile(filename);
+    } catch (error) {
+      showNotification(`❌ Upload failed: ${error.message}`, STATUS_TYPES.ERROR);
       setUploading(false);
     }
   };
@@ -230,7 +254,9 @@ export default function AdminDashboard() {
           </div>
           <MultimodalUploader
             onUpload={handleUpload}
+            onUploadAndProcess={handleUploadAndProcess}
             uploading={uploading}
+            processing={processing}
             supportedFormats={supportedFormats}
             selectedFile={selectedFile}
             onFileSelect={handleFileSelect}

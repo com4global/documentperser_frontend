@@ -1422,8 +1422,16 @@ body {
           border-color: #667eea;
         }
 
+        .upload-actions-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          align-items: center;
+        }
+
         .upload-action-btn {
-          width: 100%;
+          flex: 1;
+          min-width: 140px;
           padding: 1rem 2rem;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;
@@ -1433,6 +1441,10 @@ body {
           font-weight: 600;
           cursor: pointer;
           transition: transform 0.2s;
+        }
+
+        .upload-action-btn.process-after-btn {
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
         }
 
         .upload-action-btn:hover:not(:disabled) {

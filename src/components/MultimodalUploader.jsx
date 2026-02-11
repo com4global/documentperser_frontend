@@ -3,7 +3,7 @@ import { MEDIA_TYPES, APP_CONFIG } from '../utils/constants';
 import { isValidYouTubeUrl, validateFileSize } from '../utils/helpers';
 import '../Styles/AdminDashboard.css';
 
-const MultimodalUploader = ({ onUpload, uploading, supportedFormats, selectedFile, onFileSelect }) => {
+const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processing, supportedFormats, selectedFile, onFileSelect }) => {
   const [activeTab, setActiveTab] = useState('document');
   const [urlInput, setUrlInput] = useState('');
   const [mediaType, setMediaType] = useState('youtube');
@@ -64,6 +64,19 @@ const MultimodalUploader = ({ onUpload, uploading, supportedFormats, selectedFil
       setUploadProgress(0);
     }
   };
+
+  const handleUploadAndProcessClick = () => {
+    if (activeTab === 'document') {
+      onUploadAndProcess?.('file', selectedFile, null, setUploadProgress);
+      setUploadProgress(0);
+    } else if (mediaType !== 'youtube') {
+      onUploadAndProcess?.('media', selectedFile, mediaType, setUploadProgress);
+      setUploadProgress(0);
+    }
+  };
+
+  const canUploadAndProcess = (activeTab === 'document' && selectedFile) || (activeTab === 'media' && mediaType !== 'youtube' && selectedFile);
+  const isBusy = uploading || !!processing;
 
   const resetFileInput = () => {
     if (fileInputRef.current) {
@@ -170,24 +183,46 @@ const MultimodalUploader = ({ onUpload, uploading, supportedFormats, selectedFil
               </div>
             )}
 
-            {/* Upload Button */}
-            <button 
-              onClick={handleMediaUpload} 
-              disabled={!selectedFile || uploading} 
-              className="upload-action-btn primary-btn"
-            >
-              {uploading ? (
-                <>
-                  <span className="btn-spinner"></span>
-                  Uploading... {uploadProgress > 0 ? `${Math.round(uploadProgress)}%` : ''}
-                </>
-              ) : (
-                <>
-                  <span className="btn-icon">✅</span>
-                  Upload Document
-                </>
+            {/* Upload Buttons */}
+            <div className="upload-actions-row">
+              <button 
+                onClick={handleMediaUpload} 
+                disabled={!selectedFile || isBusy} 
+                className="upload-action-btn primary-btn"
+              >
+                {uploading ? (
+                  <>
+                    <span className="btn-spinner"></span>
+                    Uploading... {uploadProgress > 0 ? `${Math.round(uploadProgress)}%` : ''}
+                  </>
+                ) : (
+                  <>
+                    <span className="btn-icon">✅</span>
+                    Upload Document
+                  </>
+                )}
+              </button>
+              {onUploadAndProcess && (
+                <button 
+                  onClick={handleUploadAndProcessClick} 
+                  disabled={!selectedFile || isBusy} 
+                  className="upload-action-btn process-after-btn"
+                  title="Upload then chunk and save to database"
+                >
+                  {processing ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <span className="btn-icon">⚙️</span>
+                      Upload & process to DB
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           </div>
         ) : (
           <div className="media-upload fade-in">
@@ -327,23 +362,45 @@ const MultimodalUploader = ({ onUpload, uploading, supportedFormats, selectedFil
                   </div>
                 )}
 
-                <button 
-                  onClick={handleMediaUpload} 
-                  disabled={!selectedFile || uploading} 
-                  className="upload-action-btn primary-btn"
-                >
-                  {uploading ? (
-                    <>
-                      <span className="btn-spinner"></span>
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <span className="btn-icon">✅</span>
-                      Upload {MEDIA_TYPES[mediaType].label}
-                    </>
+                <div className="upload-actions-row">
+                  <button 
+                    onClick={handleMediaUpload} 
+                    disabled={!selectedFile || isBusy} 
+                    className="upload-action-btn primary-btn"
+                  >
+                    {uploading ? (
+                      <>
+                        <span className="btn-spinner"></span>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <span className="btn-icon">✅</span>
+                        Upload {MEDIA_TYPES[mediaType].label}
+                      </>
+                    )}
+                  </button>
+                  {onUploadAndProcess && (
+                    <button 
+                      onClick={handleUploadAndProcessClick} 
+                      disabled={!selectedFile || isBusy} 
+                      className="upload-action-btn process-after-btn"
+                      title="Upload then chunk and save to database"
+                    >
+                      {processing ? (
+                        <>
+                          <span className="btn-spinner"></span>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <span className="btn-icon">⚙️</span>
+                          Upload & process to DB
+                        </>
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             )}
           </div>
