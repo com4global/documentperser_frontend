@@ -6,7 +6,7 @@ import { APP_CONFIG } from '../utils/constants';
 import {put} from '@vercel/blob';
 
 const API_URL = APP_CONFIG.API_URL || 'http://localhost:10000';
-const BLOB_TOKEN = process.env.REACT_APP_BLOB_READ_WRITE_TOKEN;
+const BLOB_TOKEN = process.env.REACT_APP_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
 
 // Simple helper to handle JSON responses and errors
 const handleResponse = async (response) => {
