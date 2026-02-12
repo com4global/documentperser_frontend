@@ -3,8 +3,10 @@
  * Handles all API calls with automatic token management
  */
 import { APP_CONFIG } from '../utils/constants';
+import {put} from '@vercel/blob';
 
 const API_URL = APP_CONFIG.API_URL || 'http://localhost:10000';
+const BLOB_TOKEN = process.env.REACT_APP_BLOB_READ_WRITE_TOKEN;
 
 // Simple helper to handle JSON responses and errors
 const handleResponse = async (response) => {
@@ -14,6 +16,7 @@ const handleResponse = async (response) => {
     }));
     throw new Error(error.detail || error.message || 'Request failed');
   }
+  console.log('API response received:', response);
   return response.json();
 };
 
@@ -37,50 +40,91 @@ export const apiService = {
 
   fetchStats: async () => {
     const response = await fetch(`${API_URL}/api/files`);
+    console.log('Fetching stats, response status:', response);
     const data = await handleResponse(response);
     return data.stats || {};
   },
 
-  uploadFile: async (file, onProgress) => {
-    const formData = new FormData();
-    formData.append('file', file);
+  // uploadFile: async (file, onProgress) => {
+  //   const formData = new FormData();
+  //   formData.append('file', file);
 
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+  //   return new Promise((resolve, reject) => {
+  //     const xhr = new XMLHttpRequest();
 
-      // Progress tracking still works without auth
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable && onProgress) {
-          const percentComplete = (e.loaded / e.total) * 100;
-          onProgress(percentComplete);
-        }
-      });
+  //     // Progress tracking still works without auth
+  //     xhr.upload.addEventListener('progress', (e) => {
+  //       if (e.lengthComputable && onProgress) {
+  //         const percentComplete = (e.loaded / e.total) * 100;
+  //         onProgress(percentComplete);
+  //       }
+  //     });
 
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(JSON.parse(xhr.responseText));
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      });
+  //     xhr.addEventListener('load', () => {
+  //       if (xhr.status >= 200 && xhr.status < 300) {
+  //         resolve(JSON.parse(xhr.responseText));
+  //       } else {
+  //         reject(new Error(`Upload failed with status ${xhr.status}`));
+  //       }
+  //     });
 
-      xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+  //     xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
       
-      xhr.open('POST', `${API_URL}/api/upload`);
-      // Removed Authorization Header
-      xhr.send(formData);
-    });
-  },
+  //     xhr.open('POST', `${API_URL}/api/upload`);
+  //     // Removed Authorization Header
+  //     xhr.send(formData);
+  //   });
+  // },
 
-  processFile: async (filename) => {
-    // Note: main.py uses a query parameter for filename
-    const response = await fetch(
-      `${API_URL}/api/process-file?filename=${encodeURIComponent(filename)}`,
-      { method: 'POST' }
-    );
-    return handleResponse(response);
-  },
+ uploadFile: async (file, onProgress) => {
+    try {
+      console.log("🚀 Starting upload process for:", file.name);
+      
+      // Check if Token exists before trying
+      if (!BLOB_TOKEN) {
+        console.error("❌ ERROR: REACT_APP_BLOB_READ_WRITE_TOKEN is missing! Check your .env.local file.");
+      }
 
+      if (onProgress) onProgress(10); 
+
+      // 1. Upload to Vercel Blob
+      console.log("📡 Uploading to Vercel Blob storage...");
+      const blob = await put(file.name, file, {
+        access: 'public',
+        token: BLOB_TOKEN,
+        addRandomSuffix: true,
+      });
+
+      // THIS IS WHAT YOU WANT TO SEE
+      console.log("✅ SUCCESS: File stored in Vercel Blob!");
+      console.log("🔗 Blob URL:", blob.url);
+
+      if (onProgress) onProgress(50); 
+
+      // 2. Record metadata in your Python Backend
+      console.log("💾 Sending Blob URL to FastAPI backend to record metadata...");
+      const response = await fetch(`${API_URL}/api/record-metadata`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_name: file.name,
+          file_type: file.type || 'Document',
+          file_size: file.size,
+          blob_url: blob.url
+        })
+      });
+
+      const result = await handleResponse(response);
+      console.log("🏁 Full process complete. Backend response:", result);
+
+      if (onProgress) onProgress(100);
+      return result;
+
+    } catch (error) {
+      console.error("❌ Vercel Blob Upload failed:", error);
+      throw error;
+    }
+  },
   // Fallback for supported formats if backend doesn't have a specific endpoint
   fetchSupportedFormats: async () => {
     return ['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml', 
