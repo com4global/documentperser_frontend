@@ -26,29 +26,6 @@ export default function AdminDashboard() {
   // Persist dark mode preference
   const [darkMode, setDarkMode] = useLocalStorage('darkMode', false);
 
-  // Initialize data
-  useEffect(() => {
-    initializeDashboard();
-    
-    // Polling for updates
-    const interval = setInterval(() => {
-      if (!uploading && !processing) {
-        fetchFiles();
-        fetchStats();
-      }
-    }, APP_CONFIG.REFRESH_INTERVAL);
-    
-    // Network status monitoring
-    window.addEventListener('online', () => setIsOnline(true));
-    window.addEventListener('offline', () => setIsOnline(false));
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('online', () => setIsOnline(true));
-      window.removeEventListener('offline', () => setIsOnline(false));
-    };
-  }, [initializeDashboard, uploading, processing]);
-
   const fetchFiles = useCallback(async () => {
     try {
       const data = await apiService.fetchFiles();
@@ -103,6 +80,30 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   }, [fetchFiles, fetchStats, fetchSupportedFormats, showNotification]);
+
+  // Initialize data
+  useEffect(() => {
+    initializeDashboard();
+    
+    // Polling for updates
+    const interval = setInterval(() => {
+      if (!uploading && !processing) {
+        fetchFiles();
+        fetchStats();
+      }
+    }, APP_CONFIG.REFRESH_INTERVAL);
+    
+    // Network status monitoring
+    window.addEventListener('online', () => setIsOnline(true));
+    window.addEventListener('offline', () => setIsOnline(false));
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', () => setIsOnline(true));
+      window.removeEventListener('offline', () => setIsOnline(false));
+    };
+  }, [initializeDashboard, uploading, processing, fetchFiles, fetchStats]);
+
 
    // Add effect to log state changes
    useEffect(() => {
