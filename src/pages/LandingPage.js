@@ -1647,11 +1647,11 @@ import '../Styles/AdminDashboard.css';
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
-  // const [selectedModel, setSelectedModel] = useState(null);
-  //const [showAuthModal, setShowAuthModal] = useState(false);
-  //const [authMode, setAuthMode] = useState('signin');
-  // const [currentFeature, setCurrentFeature] = useState(0);
-  // const [hoveredPricing, setHoveredPricing] = useState(null);
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('signin');
+  const [currentFeature, setCurrentFeature] = useState(0); // Used in useEffect
+  const [hoveredPricing, setHoveredPricing] = useState(null); // Used in JSX logic
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   
