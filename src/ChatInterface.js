@@ -14,7 +14,7 @@
 //   const [messages, setMessages] = useState([
 //     {
 //       id: 1,
-//       text: "Hi there! I'm your AI-powered HR Assistant. I can help you with company policies, benefits information, leave requests, and more. What would you like to know?",
+//       text: "Hi there! I'm your AI-powered Document Assistant. I can help you with company policies, benefits information, leave requests, and more. What would you like to know?",
 //       sender: 'bot',
 //       timestamp: new Date(),
 //       suggestions: [
@@ -269,7 +269,7 @@
 //                 }}>
 //                   ✨
 //                 </div>
-//                 <span>HR Assistant</span>
+//                 <span>Document Assistant</span>
 //               </div>
 //             )}
 //             {sidebarCollapsed && (
@@ -1074,14 +1074,16 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminDashboard from './components/AdminDashboard';
+import LegalAnalyzer from './components/LegalAnalyzer';
 
 function ChatInterface() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const API_URL = APP_CONFIG.API_URL || 'http://localhost:10000';
+  const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
+  const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Hello! I'm your HR Assistant. Ask me anything about company policies, benefits, or procedures.",
+      text: "Hello! I'm your Document Assistant. Ask me anything about your uploaded documents, contracts, or agreements.",
       sender: 'bot',
       timestamp: new Date()
     }
@@ -1159,7 +1161,7 @@ function ChatInterface() {
   const startNewChat = () => {
     setMessages([{
       id: Date.now(),
-      text: "Hello! I'm your HR Assistant. Ask me anything about company policies, benefits, or procedures.",
+      text: "Hello! I'm your Document Assistant. Ask me anything about your uploaded documents, contracts, or agreements.",
       sender: 'bot',
       timestamp: new Date()
     }]);
@@ -1200,7 +1202,7 @@ function ChatInterface() {
               color: '#202124'
             }}>
               <span style={{ fontSize: '28px' }}>🚀</span>
-              RAG.AI
+              Zenzee
             </div>
           )}
           <button
@@ -1271,6 +1273,13 @@ function ChatInterface() {
             onClick={() => setShowAdminPanel(true)}
             collapsed={sidebarCollapsed}
           />
+          <NavButton
+            icon="⚖️"
+            label="Legal Analyzer"
+            active={showLegalAnalyzer}
+            onClick={() => setShowLegalAnalyzer(true)}
+            collapsed={sidebarCollapsed}
+          />
         </div>
 
         {/* Bottom Actions */}
@@ -1305,14 +1314,14 @@ function ChatInterface() {
                 fontWeight: 400,
                 color: '#202124'
               }}>
-                HR Assistant
+                Document Assistant
               </h1>
               <p style={{
                 margin: '4px 0 0 0',
                 fontSize: '13px',
                 color: '#5f6368'
               }}>
-                Powered by RAG AI
+                Powered by Zenzee
               </p>
             </div>
           </div>
@@ -1488,7 +1497,7 @@ function ChatInterface() {
                 backgroundColor: '#ffffff',
                 borderRadius: '24px',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                overflow: 'hidden',
+                overflow: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative'
@@ -1549,6 +1558,11 @@ function ChatInterface() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Legal Analyzer Modal */}
+      {showLegalAnalyzer && (
+        <LegalAnalyzer onClose={() => setShowLegalAnalyzer(false)} />
+      )}
     </div>
   );
 }
@@ -1947,14 +1961,14 @@ export default ChatInterface;
 //                   fontWeight: 400,
 //                   color: '#202124'
 //                 }}>
-//                   HR Assistant
+//                   Document Assistant
 //                 </h1>
 //                 <p style={{
 //                   margin: '4px 0 0 0',
 //                   fontSize: '13px',
 //                   color: '#5f6368'
 //                 }}>
-//                   Powered by RAG AI
+//                   Powered by Zenzee
 //                 </p>
 //               </div>
 //             </div>

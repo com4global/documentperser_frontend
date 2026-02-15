@@ -20,31 +20,31 @@ const StatsGrid = ({ stats, loading }) => {
   if (!stats) return null;
 
   const statCards = [
-    { 
-      icon: '📁', 
-      value: stats.total_files, 
-      label: 'Total Files', 
+    {
+      icon: '📁',
+      value: stats?.total_files || 0,
+      label: 'Total Files',
       color: 'blue',
-      trend: stats.files_this_week > 0 ? `+${stats.files_this_week} this week` : null
+      trend: stats?.files_this_week > 0 ? `+${stats.files_this_week} this week` : null
     },
-    { 
-      icon: '✅', 
-      value: stats.processed_files, 
-      label: 'Processed', 
+    {
+      icon: '✅',
+      value: stats?.processed_files || 0,
+      label: 'Processed',
       color: 'green',
-      percentage: stats.total_files > 0 ? Math.round((stats.processed_files / stats.total_files) * 100) : 0
+      percentage: (stats?.total_files > 0) ? Math.round((stats.processed_files / stats.total_files) * 100) : 0
     },
-    { 
-      icon: '📦', 
-      value: stats.total_chunks.toLocaleString(), 
-      label: 'Total Chunks', 
+    {
+      icon: '📦',
+      value: (stats?.total_chunks || 0).toLocaleString(),
+      label: 'Total Chunks',
       color: 'purple',
-      average: stats.total_files > 0 ? Math.round(stats.total_chunks / stats.total_files) : 0
+      average: (stats?.total_files > 0) ? Math.round((stats.total_chunks || 0) / stats.total_files) : 0
     },
-    { 
-      icon: '💾', 
-      value: formatFileSize(stats.total_size_bytes), 
-      label: 'Total Size', 
+    {
+      icon: '💾',
+      value: formatFileSize(stats?.total_size_bytes || 0),
+      label: 'Total Size',
       color: 'orange'
     }
   ];
@@ -52,7 +52,7 @@ const StatsGrid = ({ stats, loading }) => {
   return (
     <div className="stats-grid">
       {statCards.map((stat, idx) => (
-        <div key={idx} className={`stat-card stat-${stat.color} fade-in-up`} style={{animationDelay: `${idx * 0.1}s`}}>
+        <div key={idx} className={`stat-card stat-${stat.color} fade-in-up`} style={{ animationDelay: `${idx * 0.1}s` }}>
           <div className="stat-icon-wrapper">
             <div className="stat-icon">{stat.icon}</div>
           </div>

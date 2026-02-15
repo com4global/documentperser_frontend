@@ -26,7 +26,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       handleFileValidation(file);
@@ -49,8 +49,9 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
 
   const handleMediaUpload = () => {
     if (activeTab === 'document') {
+      console.log('📤 handleMediaUpload: document upload, file:', selectedFile?.name);
       onUpload('file', selectedFile, null, setUploadProgress);
-      setUploadProgress(0);
+      // Progress resets when upload completes (in AdminDashboard)
     } else if (mediaType === 'youtube') {
       if (!isValidYouTubeUrl(urlInput)) {
         setUrlError('Please enter a valid YouTube URL');
@@ -61,17 +62,15 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
       setUrlInput('');
     } else {
       onUpload('media', selectedFile, mediaType, setUploadProgress);
-      setUploadProgress(0);
     }
   };
 
   const handleUploadAndProcessClick = () => {
     if (activeTab === 'document') {
+      console.log('📤 handleUploadAndProcessClick: document, file:', selectedFile?.name);
       onUploadAndProcess?.('file', selectedFile, null, setUploadProgress);
-      setUploadProgress(0);
     } else if (mediaType !== 'youtube') {
       onUploadAndProcess?.('media', selectedFile, mediaType, setUploadProgress);
-      setUploadProgress(0);
     }
   };
 
@@ -88,7 +87,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
     <div className="multimodal-uploader">
       {/* Tab Navigation */}
       <div className="upload-tabs">
-        <button 
+        <button
           className={`upload-tab ${activeTab === 'document' ? 'active' : ''}`}
           onClick={() => { setActiveTab('document'); resetFileInput(); }}
         >
@@ -96,7 +95,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
           <span className="tab-label">Documents</span>
           <span className="tab-badge">{supportedFormats.length} formats</span>
         </button>
-        <button 
+        <button
           className={`upload-tab ${activeTab === 'media' ? 'active' : ''}`}
           onClick={() => { setActiveTab('media'); resetFileInput(); }}
         >
@@ -121,7 +120,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
             </div>
 
             {/* Drag & Drop Zone */}
-            <div 
+            <div
               className={`file-drop-zone ${dragActive ? 'drag-active' : ''} ${selectedFile ? 'has-file' : ''}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -134,7 +133,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                 type="file"
                 onChange={onFileSelect}
                 accept={supportedFormats.join(',')}
-                style={{display: 'none'}}
+                style={{ display: 'none' }}
               />
               <label htmlFor="docFile" className="file-drop-label">
                 {selectedFile ? (
@@ -147,7 +146,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                           {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                         </div>
                       </div>
-                      <button 
+                      <button
                         type="button"
                         className="file-preview-remove"
                         onClick={(e) => {
@@ -174,9 +173,9 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
             {uploading && uploadProgress > 0 && (
               <div className="upload-progress-container">
                 <div className="upload-progress-bar">
-                  <div 
-                    className="upload-progress-fill" 
-                    style={{width: `${uploadProgress}%`}}
+                  <div
+                    className="upload-progress-fill"
+                    style={{ width: `${uploadProgress}%` }}
                   ></div>
                 </div>
                 <div className="upload-progress-text">{Math.round(uploadProgress)}%</div>
@@ -185,9 +184,9 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
 
             {/* Upload Buttons */}
             <div className="upload-actions-row">
-              <button 
-                onClick={handleMediaUpload} 
-                disabled={!selectedFile || isBusy} 
+              <button
+                onClick={handleMediaUpload}
+                disabled={!selectedFile || isBusy}
                 className="upload-action-btn primary-btn"
               >
                 {uploading ? (
@@ -203,9 +202,9 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                 )}
               </button>
               {onUploadAndProcess && (
-                <button 
-                  onClick={handleUploadAndProcessClick} 
-                  disabled={!selectedFile || isBusy} 
+                <button
+                  onClick={handleUploadAndProcessClick}
+                  disabled={!selectedFile || isBusy}
                   className="upload-action-btn process-after-btn"
                   title="Upload then chunk and save to database"
                 >
@@ -261,7 +260,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                     disabled={uploading}
                   />
                   {urlInput && (
-                    <button 
+                    <button
                       className="url-clear-btn"
                       onClick={() => setUrlInput('')}
                       type="button"
@@ -274,9 +273,9 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                 <div className="input-hint">
                   💡 Tip: Paste a YouTube video URL to automatically transcribe and index the content
                 </div>
-                <button 
-                  onClick={handleMediaUpload} 
-                  disabled={!urlInput || uploading} 
+                <button
+                  onClick={handleMediaUpload}
+                  disabled={!urlInput || uploading}
                   className="upload-action-btn youtube-btn"
                 >
                   {uploading ? (
@@ -303,7 +302,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                   </div>
                 </div>
 
-                <div 
+                <div
                   className={`file-drop-zone ${dragActive ? 'drag-active' : ''} ${selectedFile ? 'has-file' : ''}`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -316,7 +315,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                     type="file"
                     onChange={onFileSelect}
                     accept={MEDIA_TYPES[mediaType].formats.join(',')}
-                    style={{display: 'none'}}
+                    style={{ display: 'none' }}
                   />
                   <label htmlFor="mediaFile" className="file-drop-label">
                     {selectedFile ? (
@@ -328,7 +327,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                             {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                           </div>
                         </div>
-                        <button 
+                        <button
                           type="button"
                           className="file-preview-remove"
                           onClick={(e) => {
@@ -353,9 +352,9 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                 {uploading && uploadProgress > 0 && (
                   <div className="upload-progress-container">
                     <div className="upload-progress-bar">
-                      <div 
-                        className="upload-progress-fill" 
-                        style={{width: `${uploadProgress}%`}}
+                      <div
+                        className="upload-progress-fill"
+                        style={{ width: `${uploadProgress}%` }}
                       ></div>
                     </div>
                     <div className="upload-progress-text">{Math.round(uploadProgress)}%</div>
@@ -363,9 +362,9 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                 )}
 
                 <div className="upload-actions-row">
-                  <button 
-                    onClick={handleMediaUpload} 
-                    disabled={!selectedFile || isBusy} 
+                  <button
+                    onClick={handleMediaUpload}
+                    disabled={!selectedFile || isBusy}
                     className="upload-action-btn primary-btn"
                   >
                     {uploading ? (
@@ -381,9 +380,9 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                     )}
                   </button>
                   {onUploadAndProcess && (
-                    <button 
-                      onClick={handleUploadAndProcessClick} 
-                      disabled={!selectedFile || isBusy} 
+                    <button
+                      onClick={handleUploadAndProcessClick}
+                      disabled={!selectedFile || isBusy}
                       className="upload-action-btn process-after-btn"
                       title="Upload then chunk and save to database"
                     >

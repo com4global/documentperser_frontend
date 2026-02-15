@@ -50,24 +50,35 @@ export default function AdminDashboard() {
   }, []);
 
   const initializeDashboard = async () => {
+    console.log('🚀 Initializing Dashboard...');
     setLoading(true);
     try {
+      console.log('📡 Fetching files, stats, and formats...');
       await Promise.all([
-        fetchFiles(),
-        fetchStats(),
-        fetchSupportedFormats()
+        fetchFiles().then(() => console.log('✅ Files fetched')),
+        fetchStats().then(() => console.log('✅ Stats fetched')),
+        fetchSupportedFormats().then(() => console.log('✅ Formats fetched'))
       ]);
+      console.log('🎉 Dashboard initialization complete');
     } catch (error) {
+      console.error('❌ Failed to initialize dashboard:', error);
       showNotification('Failed to initialize dashboard', STATUS_TYPES.ERROR);
     } finally {
+      console.log('🔓 Setting loading to false');
       setLoading(false);
     }
   };
+   // Add effect to log state changes
+   useEffect(() => {
+    console.log('📊 Dashboard State Update - Files:', files.length, 'Stats:', stats ? 'Loaded' : 'Null', 'Loading:', loading);
+  }, [files, stats, loading]);
 
   const fetchFiles = async () => {
     try {
       const data = await apiService.fetchFiles();
-      setFiles(Array.isArray(data) ? data : (data && data.files) || []);
+      // Backend returns { files: [...], stats: {...} }
+      const filesList = Array.isArray(data) ? data : (data?.files || []);
+      setFiles(filesList);
     } catch (error) {
       console.error('Error fetching files:', error);
     }
@@ -76,7 +87,9 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       const data = await apiService.fetchStats();
-      setStats(data);
+      // Backend returns { files: [...], stats: {...} } OR data is stats directly
+      const statsData = data?.stats || data;
+      setStats(statsData);
     } catch (error) {
       console.error('Error fetching stats:', error);
     }

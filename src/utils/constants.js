@@ -1,7 +1,7 @@
 // Application constants
 export const APP_CONFIG = {
-  API_URL: process.env.REACT_APP_API_URL || 'https://ragsysetm-backendpart.onrender.com',
-  // 'http://localhost:8000',
+  API_URL: process.env.REACT_APP_API_URL || 'http://localhost:10001',
+  // Production: 'https://ragsysetm-backendpart.onrender.com',
   REFRESH_INTERVAL: 10000, // 10 seconds
   MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
   NOTIFICATION_DURATION: 5000,
@@ -43,27 +43,27 @@ export const STATUS_TYPES = {
 };
 
 export const MEDIA_TYPES = {
-  youtube: { 
-    icon: '🎬', 
-    label: 'YouTube', 
+  youtube: {
+    icon: '🎬',
+    label: 'YouTube',
     placeholder: 'https://youtube.com/watch?v=...',
     description: 'Process YouTube videos with automatic transcription'
   },
-  video: { 
-    icon: '🎥', 
-    label: 'Video File', 
+  video: {
+    icon: '🎥',
+    label: 'Video File',
     formats: FILE_CATEGORIES.VIDEO.formats,
     description: 'Upload video files for processing'
   },
-  audio: { 
-    icon: '🎵', 
-    label: 'Audio File', 
+  audio: {
+    icon: '🎵',
+    label: 'Audio File',
     formats: FILE_CATEGORIES.AUDIO.formats,
     description: 'Upload audio files for transcription'
   },
-  image: { 
-    icon: '🖼️', 
-    label: 'Image File', 
+  image: {
+    icon: '🖼️',
+    label: 'Image File',
     formats: FILE_CATEGORIES.IMAGE.formats,
     description: 'Upload images for OCR and analysis'
   }

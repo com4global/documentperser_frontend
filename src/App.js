@@ -17,11 +17,11 @@
 // const ProtectedRoute = ({ children }) => {
 //   const token = localStorage.getItem('access_token');
 //   const user = localStorage.getItem('user');
-  
+
 //   if (!token || !user) {
 //     return <Navigate to="/" replace />;
 //   }
-  
+
 //   return children;
 // };
 
@@ -63,7 +63,7 @@
 
 // function App() {
 //   // Logic tip: In a real app, you'd check a token here to protect routes
-  
+
 //   const isAuthenticated = !!localStorage.getItem('token'); 
 
 //   return (
@@ -78,7 +78,7 @@
 //           {/* <Route path="/signup" element={<SignupPage />} />
 //           <Route path="/login" element={<LoginPage />} /> */}
 //           <Route path="/chat"
-          
+
 //            element={isAuthenticated ? <ChatInterface /> : <Navigate to="/" />} 
 //            />
 
@@ -96,42 +96,58 @@
 // export default App;
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate,Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Pages & Components
 import LandingPage from './pages/LandingPage';
-import home from './pages/home';
-import LoginPage from './pages/LoginPage'; // You'll need to create this
-import SignupPage from './pages/SignupPage'; // You'll need to create this
+import LoginPage from './pages/LoginPage.jsx';
 import ChatInterface from './ChatInterface';
 import AdminDashboard from './components/AdminDashboard';
-
-
 import './App.css';
-function AppContent() {
-  const location = useLocation(); // This now works because it's a child of <Router>
-  //const isAdmin = location.pathname === '/admin';
 
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const { user, session } = useAuth();
+  const location = useLocation();
+
+  // Wait for loading? We might need a loading state in AuthContext passed down
+  if (!session) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+function AppContent() {
   return (
     <div className="App">
-      {/* 1. Define your Routes - Only ONE of these will show at a time */}
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/chat" element={<ChatInterface />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-      </Routes>
+        <Route path="/login" element={<LoginPage />} />
 
-      {/* 2. Conditional Links - Show "Back to Chat" ONLY on Admin page, 
-          and "Admin Panel" ONLY on Chat page */}
-      {/* <div className="navigation-footer">
-        {location.pathname === '/admin' && (
-          <Link to="/chat" className="nav-link">← Back to Chat</Link>
-        )}
-        
-        {location.pathname === '/chat' && (
-          <Link to="/admin" className="nav-link">⚙️ Admin Panel</Link>
-        )}
-      </div> */}
+        {/* Protected Routes */}
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <ChatInterface />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
@@ -139,7 +155,9 @@ function AppContent() {
 export default function App() {
   return (
     <Router>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   );
 }

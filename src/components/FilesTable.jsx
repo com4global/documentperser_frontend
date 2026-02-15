@@ -69,8 +69,8 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
         </div>
 
         <div className="table-filters">
-          <select 
-            value={filterType} 
+          <select
+            value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="filter-select"
           >
@@ -81,8 +81,8 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
             ))}
           </select>
 
-          <select 
-            value={sortBy} 
+          <select
+            value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="filter-select"
           >
@@ -116,7 +116,7 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
             {filteredFiles.map((file, index) => {
               const category = getFileCategory(file.file_type);
               return (
-                <tr key={file.id} className="file-row fade-in-up" style={{animationDelay: `${index * 0.05}s`}}>
+                <tr key={file.id} className="file-row fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
                   <td className="file-name-cell">
                     <div className="file-info">
                       <span className={`file-icon file-icon-${category}`}>
@@ -127,7 +127,7 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
                       </span>
                       <div className="file-details">
                         <div className="file-name-text" title={file.file_name}>
-                          {truncateText(file.file_name, 40)}
+                          {file.file_name}
                         </div>
                         <div className="file-meta">ID: {file.id}</div>
                       </div>

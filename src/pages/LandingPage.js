@@ -263,7 +263,7 @@
 //                 </defs>
 //               </svg>
 //             </div>
-//             <span className="logo-text">DocuMind AI</span>
+//             <span className="logo-text">Zenzee</span>
 //           </motion.div>
           
 //           <div className="nav-links">
@@ -493,7 +493,7 @@
 //             transition={{ duration: 0.6 }}
 //           >
 //             <h2 className="section-title">
-//               See DocuMind AI <span className="gradient-text">In Action</span>
+//               See Zenzee <span className="gradient-text">In Action</span>
 //             </h2>
 //             <p className="section-description">
 //               Watch how businesses transform their document workflows with AI
@@ -893,7 +893,7 @@
 //                     </defs>
 //                   </svg>
 //                 </div>
-//                 <span>DocuMind AI</span>
+//                 <span>Zenzee</span>
 //               </div>
 //               <p className="footer-description">
 //                 Transform your documents into intelligent knowledge with AI-powered processing and search.
@@ -927,7 +927,7 @@
 
 //           <div className="footer-bottom">
 //             <div className="footer-copyright">
-//               © 2024 DocuMind AI. All rights reserved.
+//               © 2024 Zenzee. All rights reserved.
 //             </div>
 //             <div className="footer-social">
 //               <a href="#twitter" className="social-link">

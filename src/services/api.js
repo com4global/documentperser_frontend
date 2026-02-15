@@ -1,836 +1,256 @@
 /**
  * API Service with Authentication
- * Handles all API calls with automatic token management
+ * Handles all API calls with automatic token management via Supabase
  */
 import { APP_CONFIG } from '../utils/constants';
-import {put} from '@vercel/blob';
+// import { put } from '@vercel/blob'; // Not used for local deployment
+import { supabase } from '../supabaseClient';
 
-const API_URL = APP_CONFIG.API_URL || 'http://localhost:10000';
-const BLOB_TOKEN = process.env.REACT_APP_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
+// const BLOB_TOKEN = process.env.REACT_APP_BLOB_READ_WRITE_TOKEN; // Not used for local deployment
 
-// Simple helper to handle JSON responses and errors
+// Helper to get current session token
+const getAuthToken = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token;
+};
+
+// Error handler
 const handleResponse = async (response) => {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ 
-      detail: `Request failed with status ${response.status}` 
+    const error = await response.json().catch(() => ({
+      detail: `Request failed with status ${response.status}`
     }));
+
+    if (response.status === 401) {
+      // Optional: Redirect to login or handle session expiry
+      console.error("Authentication Error: 401");
+    }
+
     throw new Error(error.detail || error.message || 'Request failed');
   }
-  console.log('API response received:', response);
   return response.json();
 };
 
+// Authenticated Fetch Wrapper
+const authenticatedFetch = async (endpoint, options = {}) => {
+  const token = await getAuthToken();
+
+  const headers = {
+    ...options.headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+
+  const config = {
+    ...options,
+    headers
+  };
+
+  const response = await fetch(`${API_URL}${endpoint}`, config);
+  return handleResponse(response);
+};
+
 export const apiService = {
-  // Chat API - No Session/Auth required
-  sendMessage: async (query) => {
-    const response = await fetch(`${API_URL}/chat`, {
+  // Chat API
+  sendMessage: async (query, sessionId = null) => {
+    return authenticatedFetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({ query, session_id: sessionId }) // Backend expects session_id
     });
-    return handleResponse(response);
+  },
+
+  getChatHistory: async (sessionId = null, limit = 50) => {
+    let query = `?limit=${limit}`;
+    if (sessionId) query += `&session_id=${sessionId}`;
+    return authenticatedFetch(`/api/chat/history${query}`);
   },
 
   // Files API
   fetchFiles: async () => {
-    const response = await fetch(`${API_URL}/api/files`);
-    const data = await handleResponse(response);
-    return data.files || [];
+    return authenticatedFetch('/api/files');
   },
 
   fetchStats: async () => {
-    const response = await fetch(`${API_URL}/api/files`);
-    console.log('Fetching stats, response status:', response);
-    const data = await handleResponse(response);
-    return data.stats || {};
+    return authenticatedFetch('/api/files'); // Backend returns stats in this endpoint currently? Or separate? 
+    // Creating a dedicated stats endpoint might be better, but sticking to existing pattern for now.
+    // Wait, original code had fetchStats calling /api/files too? 
+    // Yes: "const response = await fetch(`${API_URL}/api/files`);"
+    // But it returned "data.stats".
   },
 
-  // uploadFile: async (file, onProgress) => {
-  //   const formData = new FormData();
-  //   formData.append('file', file);
+  // Fallback for supported formats
+  fetchSupportedFormats: async () => {
+    return ['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml',
+      '.mp4', '.avi', '.mov', '.mp3', '.wav', '.jpg', '.png', '.jpeg'];
+  },
 
-  //   return new Promise((resolve, reject) => {
-  //     const xhr = new XMLHttpRequest();
-
-  //     // Progress tracking still works without auth
-  //     xhr.upload.addEventListener('progress', (e) => {
-  //       if (e.lengthComputable && onProgress) {
-  //         const percentComplete = (e.loaded / e.total) * 100;
-  //         onProgress(percentComplete);
-  //       }
-  //     });
-
-  //     xhr.addEventListener('load', () => {
-  //       if (xhr.status >= 200 && xhr.status < 300) {
-  //         resolve(JSON.parse(xhr.responseText));
-  //       } else {
-  //         reject(new Error(`Upload failed with status ${xhr.status}`));
-  //       }
-  //     });
-
-  //     xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
-      
-  //     xhr.open('POST', `${API_URL}/api/upload`);
-  //     // Removed Authorization Header
-  //     xhr.send(formData);
-  //   });
-  // },
-
- uploadFile: async (file, onProgress) => {
+  // Upload File — Local Storage Direct Upload
+  uploadFile: async (file, onProgress) => {
     try {
-      console.log("🚀 Starting upload process for:", file.name);
-      
-      // Check if Token exists before trying
-      if (!BLOB_TOKEN) {
-        console.error("❌ ERROR: REACT_APP_BLOB_READ_WRITE_TOKEN is missing! Check your .env.local file.");
-      }
+      console.log("🚀 Starting upload process for:", file.name, "Size:", file.size, "Type:", file.type);
+      const token = await getAuthToken();
+      console.log("🔑 Auth token:", token ? `${token.substring(0, 20)}...` : "NONE");
 
-      if (onProgress) onProgress(10); 
+      // Always use local upload path
+      console.log("📂 Uploading to Local Storage via XHR...");
+      console.log("📡 Target URL:", `${API_URL}/api/upload`);
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // 1. Upload to Vercel Blob
-      console.log("📡 Uploading to Vercel Blob storage...");
-      const blob = await put(file.name, file, {
-        access: 'public',
-        token: BLOB_TOKEN,
-        addRandomSuffix: true,
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // Track all state changes
+        xhr.onreadystatechange = () => {
+          console.log(`📊 XHR readyState: ${xhr.readyState} (0=UNSENT, 1=OPENED, 2=HEADERS_RECEIVED, 3=LOADING, 4=DONE)`);
+          if (xhr.readyState === 4) {
+            console.log(`📊 XHR final status: ${xhr.status}, response: ${xhr.responseText?.substring(0, 200)}`);
+          }
+        };
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            console.log(`📤 Upload progress: ${percent}% (${e.loaded}/${e.total} bytes)`);
+            if (onProgress) onProgress(percent);
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          console.log(`✅ XHR load event: status=${xhr.status}`);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            console.log("✅ Upload successful:", xhr.responseText?.substring(0, 200));
+            resolve(JSON.parse(xhr.responseText));
+          } else {
+            console.error(`❌ Upload failed: status=${xhr.status}, body=${xhr.responseText}`);
+            reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`));
+          }
+        });
+
+        xhr.addEventListener('error', (e) => {
+          console.error("❌ XHR error event:", e);
+          reject(new Error('Network error during upload. Check if backend is running on ' + API_URL));
+        });
+
+        xhr.addEventListener('abort', () => {
+          console.error("❌ XHR aborted");
+          reject(new Error('Upload was aborted'));
+        });
+
+        xhr.addEventListener('timeout', () => {
+          console.error("❌ XHR timeout after 60 seconds");
+          reject(new Error('Upload timed out after 60 seconds'));
+        });
+
+        xhr.timeout = 60000; // 60 second timeout
+        xhr.open('POST', `${API_URL}/api/upload`);
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          console.log("🔑 Authorization header set");
+        } else {
+          console.warn("⚠️ No auth token available!");
+        }
+        console.log("📤 Sending upload request...");
+        xhr.send(formData);
       });
-
-      // THIS IS WHAT YOU WANT TO SEE
-      console.log("✅ SUCCESS: File stored in Vercel Blob!");
-      console.log("🔗 Blob URL:", blob.url);
-
-      if (onProgress) onProgress(50); 
-
-      // 2. Record metadata in your Python Backend
-      console.log("💾 Sending Blob URL to FastAPI backend to record metadata...");
-      const response = await fetch(`${API_URL}/api/record-metadata`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_name: file.name,
-          file_type: file.type || 'Document',
-          file_size: file.size,
-          blob_url: blob.url
-        })
-      });
-
-      const result = await handleResponse(response);
-      console.log("🏁 Full process complete. Backend response:", result);
-
-      if (onProgress) onProgress(100);
-      return result;
-
     } catch (error) {
-      console.error("❌ Vercel Blob Upload failed:", error);
+      console.error("❌ Upload failed:", error);
       throw error;
     }
   },
-  // Fallback for supported formats if backend doesn't have a specific endpoint
-  fetchSupportedFormats: async () => {
-    return ['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml', 
-            '.mp4', '.avi', '.mov', '.mp3', '.wav', '.jpg', '.png', '.jpeg'];
-  }
+
+  // Process File
+  processFile: async (filename) => {
+    return authenticatedFetch(`/api/process-file?filename=${encodeURIComponent(filename)}`, {
+      method: 'POST'
+    });
+  },
+
+  deleteFile: async (filename) => {
+    return authenticatedFetch(`/api/files/${encodeURIComponent(filename)}`, {
+      method: 'DELETE'
+    });
+  },
+
+  deleteFileChunks: async (filename) => {
+    return authenticatedFetch(`/api/files/${encodeURIComponent(filename)}/chunks`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Multimedia
+  processVideoFile: async (filename) => {
+    // Note: Long running process, explicit fetch might be better for timeout control
+    const token = await getAuthToken();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 mins
+
+    try {
+      const response = await fetch(`${API_URL}/api/process-video-file?filename=${encodeURIComponent(filename)}`, {
+        method: 'POST',
+        sub: controller.signal,
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      clearTimeout(timeoutId);
+      return handleResponse(response);
+    } catch (error) {
+      if (error.name === 'AbortError') throw new Error('Video processing timed out.');
+      throw error;
+    }
+  },
+
+  processAudioFile: async (filename) => {
+    const token = await getAuthToken();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+    try {
+      const response = await fetch(`${API_URL}/api/process-audio-file?filename=${encodeURIComponent(filename)}`, {
+        method: 'POST',
+        sub: controller.signal,
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      clearTimeout(timeoutId);
+      return handleResponse(response);
+    } catch (error) {
+      if (error.name === 'AbortError') throw new Error('Audio processing timed out.');
+      throw error;
+    }
+  },
+
+  // External Sources
+  processYoutube: async (url) => {
+    return authenticatedFetch('/api/process-youtube', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+  },
+
+  analyzeLegalDocument: async (payload) => {
+    const formData = new FormData();
+    if (payload.file) formData.append('file', payload.file);
+    if (payload.url) formData.append('url', payload.url);
+
+    // Cannot use authenticatedFetch easily with FormData + automatic Content-Type
+    // So we use fetch manually
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    const response = await fetch(`${API_URL}/api/analyze-legal`, {
+      method: 'POST',
+      body: formData,
+      headers
+    });
+    return handleResponse(response);
+  },
+
+  // Auth (Legacy/Supabase wrapper if needed, but we use Supabase client directly in Context)
 };
 
 export default apiService;
-
-//import { APP_CONFIG } from '../utils/constants';
-
-// const API_URL = APP_CONFIG.API_URL || 'http://localhost:10000';
-// console.log('Using API URL:', API_URL); // Debug log to verify API URL
-
-// //https://ragsysetm-backendpart.onrender.com
-
-// // Get tokens from localStorage
-// const getAccessToken = () => localStorage.getItem('access_token');
-// const getRefreshToken = () => localStorage.getItem('refresh_token');
-
-// // Refresh access token
-// const refreshAccessToken = async () => {
-//   const refreshToken = getRefreshToken();
-//   if (!refreshToken) {
-//     throw new Error('No refresh token available');
-//   }
-
-//   try {
-//     const response = await fetch(`${API_URL}/api/auth/refresh`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ refresh_token: refreshToken })
-//     });
-
-//     if (response.ok) {
-//       const { access_token } = await response.json();
-//       localStorage.setItem('access_token', access_token);
-//       return access_token;
-//     } else {
-//       // Clear tokens and redirect to login
-//       localStorage.removeItem('access_token');
-//       localStorage.removeItem('refresh_token');
-//       localStorage.removeItem('user');
-//       window.location.href = '/';
-//       throw new Error('Session expired');
-//     }
-//   } catch (error) {
-//     throw new Error('Failed to refresh token');
-//   }
-// };
-
-// // Authenticated fetch with automatic token refresh
-// const authenticatedFetch = async (url, options = {}) => {
-//   const token = getAccessToken();
-
-//   if (!token) {
-//     throw new Error('No authentication token found');
-//   }
-
-//   const config = {
-//     ...options,
-//     headers: {
-//       ...options.headers,
-//       'Authorization': `Bearer ${token}`
-//     }
-//   };
-
-//   let response = await fetch(url, config);
-
-//   // If unauthorized, try refreshing token
-//   if (response.status === 401) {
-//     try {
-//       const newToken = await refreshAccessToken();
-//       config.headers['Authorization'] = `Bearer ${newToken}`;
-//       response = await fetch(url, config);
-//     } catch (error) {
-//       // Refresh failed, redirect to login
-//       window.location.href = '/';
-//       throw new Error('Session expired. Please login again.');
-//     }
-//   }
-
-//   return response;
-// };
-
-// // Error handler
-// const handleResponse = async (response) => {
-//   if (!response.ok) {
-//     const error = await response.json().catch(() => ({ 
-//       detail: `Request failed with status ${response.status}` 
-//     }));
-//     throw new Error(error.detail || error.message || 'Request failed');
-//   }
-//   return response.json();
-// };
-
-// // Retry logic for failed requests
-// const fetchWithRetry = async (url, options = {}, retries = 3) => {
-//   for (let i = 0; i < retries; i++) {
-//     try {
-//       const response = await authenticatedFetch(url, options);
-//       return await handleResponse(response);
-//     } catch (error) {
-//       if (i === retries - 1) throw error;
-//       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-//     }
-//   }
-// };
-
-// export const apiService = {
-//   // Authentication APIs
-//   register: async (email, password, fullName, company = null) => {
-//     const response = await fetch(`${API_URL}/api/auth/register`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({
-//         email,
-//         password,
-//         full_name: fullName,
-//         company
-//       })
-//     });
-//     return handleResponse(response);
-//   },
-
-//   login: async (email, password) => {
-//     const response = await fetch(`${API_URL}/api/auth/login`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ email, password })
-//     });
-//     return handleResponse(response);
-//   },
-
-//   logout: async () => {
-//     const refreshToken = getRefreshToken();
-//     if (refreshToken) {
-//       await authenticatedFetch(`${API_URL}/api/auth/logout`, {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({ refresh_token: refreshToken })
-//       });
-//     }
-//     localStorage.removeItem('access_token');
-//     localStorage.removeItem('refresh_token');
-//     localStorage.removeItem('user');
-//   },
-
-//   getCurrentUser: async () => {
-//     return fetchWithRetry(`${API_URL}/api/auth/me`);
-//   },
-
-//   // Files API - User-specific
-//   fetchFiles: async () => {
-//     return fetchWithRetry(`${API_URL}/api/files`);
-//   },
-
-//   fetchStats: async () => {
-//     const data = await fetchWithRetry(`${API_URL}/api/files`);
-//     return data.stats || {};
-//   },
-
-//   fetchSupportedFormats: async () => {
-//     try {
-//       const response = await fetch(`${API_URL}/api/supported-formats`);
-//       const data = await handleResponse(response);
-//       return data.supported_formats;
-//     } catch (error) {
-//       console.warn('Using fallback formats:', error);
-//       return ['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml', 
-//               '.mp4', '.avi', '.mov', '.mp3', '.wav', '.jpg', '.png', '.jpeg'];
-//     }
-//   },
-
-//   uploadFile: async (file, onProgress) => {
-//     const formData = new FormData();
-//     formData.append('file', file);
-//     const token = getAccessToken();
-
-//     return new Promise((resolve, reject) => {
-//       const xhr = new XMLHttpRequest();
-
-//       xhr.upload.addEventListener('progress', (e) => {
-//         if (e.lengthComputable && onProgress) {
-//           const percentComplete = (e.loaded / e.total) * 100;
-//           onProgress(percentComplete);
-//         }
-//       });
-
-//       xhr.addEventListener('load', () => {
-//         if (xhr.status === 401) {
-//           // Try to refresh token and retry
-//           refreshAccessToken()
-//             .then(() => {
-//               // Retry upload with new token
-//               apiService.uploadFile(file, onProgress).then(resolve).catch(reject);
-//             })
-//             .catch(reject);
-//         } else if (xhr.status >= 200 && xhr.status < 300) {
-//           resolve(JSON.parse(xhr.responseText));
-//         } else {
-//           reject(new Error('Upload failed'));
-//         }
-//       });
-
-//       xhr.addEventListener('error', () => reject(new Error('Upload failed')));
-//       xhr.open('POST', `${API_URL}/api/upload`);
-//       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-//       xhr.send(formData);
-//     });
-//   },
-
-//   processFile: async (filename) => {
-//     const response = await authenticatedFetch(
-//       `${API_URL}/api/process-file?filename=${encodeURIComponent(filename)}`,
-//       { method: 'POST' }
-//     );
-//     console.log(`Processing file: ${filename}, response status: ${response.status}`);
-//     return handleResponse(response);
-//   },
-
-//   deleteFile: async (filename) => {
-//     const response = await authenticatedFetch(
-//       `${API_URL}/api/files/${encodeURIComponent(filename)}`,
-//       { method: 'DELETE' }
-//     );
-//     return handleResponse(response);
-//   },
-
-//   // Media processing
-//   processVideoFile: async (filename) => {
-//     console.log(`🎬 Starting video process for: ${filename}`);
-    
-//     const controller = new AbortController();
-//     const timeoutId = setTimeout(() => controller.abort(), 300000);
-
-//     try {
-//       const response = await authenticatedFetch(
-//         `${API_URL}/api/process-video-file?filename=${encodeURIComponent(filename)}`,
-//         { 
-//           method: 'POST',
-//           signal: controller.signal
-//         }
-//       );
-
-//       clearTimeout(timeoutId);
-//       return handleResponse(response);
-//     } catch (error) {
-//       if (error.name === 'AbortError') {
-//         throw new Error('Video processing timed out.');
-//       }
-//       throw error;
-//     }
-//   },
-
-//   processAudioFile: async (filename) => {
-//     console.log(`🎙️ Starting audio transcription for: ${filename}`);
-    
-//     const controller = new AbortController();
-//     const timeoutId = setTimeout(() => controller.abort(), 300000);
-
-//     try {
-//       const response = await authenticatedFetch(
-//         `${API_URL}/api/process-audio-file?filename=${encodeURIComponent(filename)}`,
-//         { 
-//           method: 'POST',
-//           signal: controller.signal
-//         }
-//       );
-
-//       clearTimeout(timeoutId);
-//       return handleResponse(response);
-//     } catch (error) {
-//       if (error.name === 'AbortError') {
-//         throw new Error('Audio processing timed out.');
-//       }
-//       throw error;
-//     }
-//   },
-
-//   processImageFile: async (filename) => {
-//     console.log(`🖼️ Starting image analysis for: ${filename}`);
-    
-//     const controller = new AbortController();
-//     const timeoutId = setTimeout(() => controller.abort(), 120000);
-
-//     try {
-//       const response = await authenticatedFetch(
-//         `${API_URL}/api/process-image-file?filename=${encodeURIComponent(filename)}`,
-//         { 
-//           method: 'POST',
-//           signal: controller.signal
-//         }
-//       );
-
-//       clearTimeout(timeoutId);
-//       return handleResponse(response);
-//     } catch (error) {
-//       if (error.name === 'AbortError') {
-//         throw new Error('Image processing timed out.');
-//       }
-//       throw error;
-//     }
-//   },
-
-//   // Chat API - User-specific
-//   sendMessage: async (query, sessionId = null) => {
-//     const response = await authenticatedFetch(`${API_URL}/chat`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ query, session_id: sessionId })
-//     });
-//     return handleResponse(response);
-//   },
-
-//   getChatHistory: async (sessionId = null, limit = 50) => {
-//     const url = new URL(`${API_URL}/api/chat/history`);
-//     if (sessionId) url.searchParams.append('session_id', sessionId);
-//     url.searchParams.append('limit', limit);
-    
-//     return fetchWithRetry(url.toString());
-//   }
-// };
-
-// export default apiService;
-
-
-
-
-
-
-// import { APP_CONFIG } from '../utils/constants';
-
-// const API_URL = APP_CONFIG.API_URL;
-
-// // Error handler
-// const handleResponse = async (response) => {
-//   if (!response.ok) {
-//     const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-//     throw new Error(error.detail || error.message || 'Request failed');
-//   }
-//   return response.json();
-// };
-
-// // Retry logic for failed requests
-// const fetchWithRetry = async (url, options = {}, retries = 3) => {
-//   for (let i = 0; i < retries; i++) {
-//     try {
-//       const response = await fetch(url, options);
-//       return await handleResponse(response);
-//     } catch (error) {
-//       if (i === retries - 1) throw error;
-//       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-//     }
-//   }
-// };
-
-// export const apiService = {
-//   // Files API
-//   fetchFiles: async () => {
-//     return fetchWithRetry(`${API_URL}/api/files`);
-//   },
-
-//   fetchStats: async () => {
-//     return fetchWithRetry(`${API_URL}/api/files/stats`);
-//   },
-
-//   fetchSupportedFormats: async () => {
-//     try {
-//       const data = await fetchWithRetry(`${API_URL}/api/supported-formats`);
-//       return data.supported_formats;
-//     } catch (error) {
-//       console.warn('Using fallback formats:', error);
-//       return ['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml'];
-//     }
-//   },
-
-//   uploadFile: async (file, onProgress) => {
-//     const formData = new FormData();
-//     formData.append('file', file);
-
-//     return new Promise((resolve, reject) => {
-//       const xhr = new XMLHttpRequest();
-
-//       xhr.upload.addEventListener('progress', (e) => {
-//         if (e.lengthComputable && onProgress) {
-//           const percentComplete = (e.loaded / e.total) * 100;
-//           onProgress(percentComplete);
-//         }
-//       });
-
-//       xhr.addEventListener('load', () => {
-//         if (xhr.status >= 200 && xhr.status < 300) {
-//           resolve(JSON.parse(xhr.responseText));
-//         } else {
-//           reject(new Error('Upload failed'));
-//         }
-//       });
-
-//       xhr.addEventListener('error', () => reject(new Error('Upload failed')));
-//       xhr.open('POST', `${API_URL}/api/upload`);
-//       xhr.send(formData);
-//     });
-//   },
-//   processVideoFile: async (filename) => {
-//   console.log(`🎬 Starting video process for: ${filename}`);
-  
-//   // Create an AbortController to manage long-running requests
-//   const controller = new AbortController();
-//   // Optional: Set a very long timeout (e.g., 5 minutes)
-//   const timeoutId = setTimeout(() => controller.abort(), 1200000);
-
-//   try {
-//     const response = await fetch(
-//       `${API_URL}/api/process-video-file?filename=${encodeURIComponent(filename)}`,
-//       { 
-//         method: 'POST',
-//         signal: controller.signal // Link the abort signal
-//       }
-//     );
-
-//     clearTimeout(timeoutId);
-
-//     if (!response.ok) {
-//       const errorData = await response.json();
-//       throw new Error(errorData.detail || 'Video processing failed');
-//     }
-    
-//     return await response.json();
-//   } catch (error) {
-//     if (error.name === 'AbortError') {
-//       throw new Error('Video processing took too long and timed out.');
-//     }
-//     throw error;
-//   }
-// },
-
-
-
-// // --- AUDIO FILE PROCESSING ---
-// processAudioFile: async (filename) => {
-//   console.log(`🎙️ Starting audio transcription for: ${filename}`);
-  
-//   const controller = new AbortController();
-//   // 5 minute timeout for long audio files
-//   const timeoutId = setTimeout(() => controller.abort(), 300000); 
-
-//   try {
-//     const response = await fetch(
-//       `${API_URL}/api/process-audio-file?filename=${encodeURIComponent(filename)}`,
-//       { 
-//         method: 'POST',
-//         signal: controller.signal 
-//       }
-//     );
-
-//     clearTimeout(timeoutId);
-
-//     if (!response.ok) {
-//       const errorData = await response.json();
-//       throw new Error(errorData.detail || 'Audio processing failed');
-//     }
-    
-//     return await response.json();
-//   } catch (error) {
-//     if (error.name === 'AbortError') {
-//       throw new Error('Audio processing timed out (took longer than 5 mins).');
-//     }
-//     throw error;
-//   }
-// },
-
-// // --- IMAGE FILE PROCESSING ---
-// processImageFile: async (filename) => {
-//   console.log(`🖼️ Starting image analysis for: ${filename}`);
-  
-//   const controller = new AbortController();
-//   // 2 minute timeout for complex images/OCR
-//   const timeoutId = setTimeout(() => controller.abort(), 120000); 
-
-//   try {
-//     const response = await fetch(
-//       `${API_URL}/api/process-image-file?filename=${encodeURIComponent(filename)}`,
-//       { 
-//         method: 'POST',
-//         signal: controller.signal 
-//       }
-//     );
-
-//     clearTimeout(timeoutId);
-
-//     if (!response.ok) {
-//       const errorData = await response.json();
-//       throw new Error(errorData.detail || 'Image processing failed');
-//     }
-    
-//     return await response.json();
-//   } catch (error) {
-//     if (error.name === 'AbortError') {
-//       throw new Error('Image processing timed out.');
-//     }
-//     throw error;
-//   }
-// },
-
-//   processYoutube: async (url) => {
-//     const response = await fetch(`${API_URL}/api/process-youtube`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ url })
-//     });
-//     return handleResponse(response);
-//   },
-
-//   processFile: async (filename) => {
-//     const response = await fetch(
-//       `${API_URL}/api/process-file?filename=${encodeURIComponent(filename)}`,
-//       { method: 'POST' }
-//     );
-//     return handleResponse(response);
-//   },
-
-//   deleteFile: async (filename) => {
-//     const response = await fetch(
-//       `${API_URL}/api/files/${encodeURIComponent(filename)}`,
-//       { method: 'DELETE' }
-//     );
-//     return handleResponse(response);
-//   },
-
-//   // Health check
-//   healthCheck: async () => {
-//     try {
-//       const response = await fetch(`${API_URL}/health`, { timeout: 5000 });
-//       return response.ok;
-//     } catch {
-//       return false;
-//     }
-//   }
-// };
-
-
-// const API_URL = 'http://localhost:8000';
-
-// export const apiService = {
-//   // dashboard calls getFiles, so we map it to our fetch logic
-//   getFiles: async () => {
-//     const response = await fetch(`${API_URL}/api/files`);
-//     if (!response.ok) throw new Error('Failed to fetch files');
-//     return await response.json();
-//   },
-
-//   // Kept for backward compatibility
-//   fetchFiles: async () => {
-//     const response = await fetch(`${API_URL}/api/files`);
-//     if (!response.ok) throw new Error('Failed to fetch files');
-//     return await response.json();
-//   },
-
-//   fetchStats: async () => {
-//     const response = await fetch(`${API_URL}/api/files/stats`);
-//     if (!response.ok) throw new Error('Failed to fetch stats');
-//     return await response.json();
-//   },
-
-//   fetchSupportedFormats: async () => {
-//     try {
-//       const response = await fetch(`${API_URL}/api/supported-formats`);
-//       if (!response.ok) throw new Error('Failed to fetch formats');
-//       const data = await response.json();
-//       return data.supported_formats;
-//     } catch (error) {
-//       return ['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml'];
-//     }
-//   },
-
-//   uploadFile: async (file) => {
-//     const formData = new FormData();
-//     formData.append('file', file);
-//     const response = await fetch(`${API_URL}/api/upload`, {
-//       method: 'POST',
-//       body: formData
-//     });
-//     if (!response.ok) {
-//         const errorData = await response.json();
-//         throw new Error(errorData.detail || 'Upload failed');
-//     }
-//     return response.json();
-//   },
-
-//   // NEW: Needed for local video processing
-//   processVideoFile: async (filename) => {
-//   console.log(`🎬 Starting video process for: ${filename}`);
-  
-//   // Create an AbortController to manage long-running requests
-//   const controller = new AbortController();
-//   // Optional: Set a very long timeout (e.g., 5 minutes)
-//   const timeoutId = setTimeout(() => controller.abort(), 1200000);
-
-//   try {
-//     const response = await fetch(
-//       `${API_URL}/api/process-video-file?filename=${encodeURIComponent(filename)}`,
-//       { 
-//         method: 'POST',
-//         signal: controller.signal // Link the abort signal
-//       }
-//     );
-
-//     clearTimeout(timeoutId);
-
-//     if (!response.ok) {
-//       const errorData = await response.json();
-//       throw new Error(errorData.detail || 'Video processing failed');
-//     }
-    
-//     return await response.json();
-//   } catch (error) {
-//     if (error.name === 'AbortError') {
-//       throw new Error('Video processing took too long and timed out.');
-//     }
-//     throw error;
-//   }
-// },
-
-
-//   processYoutube: async (url) => {
-//     const response = await fetch(`${API_URL}/api/process-youtube`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ url })
-//     });
-//     if (!response.ok) {
-//       const error = await response.json();
-//       throw new Error(error.detail || 'YouTube processing failed');
-//     }
-//     return response.json();
-//   },
-
-//   processFile: async (filename) => {
-//     const response = await fetch(
-//       `${API_URL}/api/process-file?filename=${encodeURIComponent(filename)}`,
-//       { method: 'POST' }
-//     );
-//     if (!response.ok) throw new Error('File processing failed');
-//     return response.json();
-//   }
-// };
-// const API_URL = 'http://localhost:8000';
-// // src/services/api.js
-
-// export const apiService = {
-//   fetchFiles: async () => {
-//     const response = await fetch(`${API_URL}/api/files`);
-//     if (!response.ok) throw new Error('Failed to fetch files');
-//     const data = await response.json();
-//     return data;
-//   },
-
-//   fetchStats: async () => {
-//     const response = await fetch(`${API_URL}/api/files/stats`);
-//     if (!response.ok) throw new Error('Failed to fetch stats');
-//     const data = await response.json();
-//     return data;
-//   },
-
-//   fetchSupportedFormats: async () => {
-//     try {
-//       const response = await fetch(`${API_URL}/api/supported-formats`);
-//       if (!response.ok) throw new Error('Failed to fetch formats');
-//       const data = await response.json();
-//       return data.supported_formats;
-//     } catch (error) {
-//       return ['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml'];
-//     }
-//   },
-
-//   uploadFile: async (file) => {
-//     const formData = new FormData();
-//     formData.append('file', file);
-//     const response = await fetch(`${API_URL}/api/upload`, {
-//       method: 'POST',
-//       body: formData
-//     });
-//     if (!response.ok) throw new Error('Upload failed');
-//     return response.json();
-//   },
-
-//   processYoutube: async (url) => {
-//     const response = await fetch(`${API_URL}/api/process-youtube`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ url })
-//     });
-//     if (!response.ok) {
-//       const error = await response.json();
-//       throw new Error(error.detail || 'YouTube processing failed');
-//     }
-//     return response.json();
-//   },
-
-//   processFile: async (filename) => {
-//     const response = await fetch(
-//       `${API_URL}/api/process-file?filename=${encodeURIComponent(filename)}`,
-//       { method: 'POST' }
-//     );
-//     if (!response.ok) throw new Error('File processing failed');
-//     return response.json();
-//   }
-// };

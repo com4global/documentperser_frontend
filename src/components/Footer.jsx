@@ -96,7 +96,7 @@ const Footer = () => {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent'
               }}>
-                RAG.AI
+                Zenzee
               </span>
             </div>
             <p style={{
@@ -107,7 +107,7 @@ const Footer = () => {
             }}>
               Enterprise AI-powered document parsing and data extraction platform
             </p>
-            
+
             {/* Social Links */}
             <div style={{
               display: 'flex',
@@ -260,12 +260,12 @@ const Footer = () => {
                 transition: 'transform 0.2s ease',
                 whiteSpace: 'nowrap'
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
                 Subscribe
               </button>
@@ -287,7 +287,7 @@ const Footer = () => {
             color: '#6b7280',
             fontSize: '0.9rem'
           }}>
-            © 2024 RAG.AI. All rights reserved.
+            © 2024 Zenzee. All rights reserved.
           </div>
           <div style={{
             display: 'flex',
