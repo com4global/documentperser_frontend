@@ -89,6 +89,23 @@ export const apiService = {
   uploadFile: async (file, onProgress) => {
     try {
       console.log("🚀 Starting upload process for:", file.name, "Size:", file.size, "Type:", file.type);
+
+      // 0. Validate File Size
+      // Conditional size limit based on upload method
+      if (BLOB_TOKEN) {
+        // Limit for Blob Storage (5GB max supported by Vercel, setting safe 4.5GB)
+        const MAX_BLOB_SIZE = 4.5 * 1024 * 1024 * 1024;
+        if (file.size > MAX_BLOB_SIZE) {
+          throw new Error(`File too large for cloud storage. Limit is 4.5GB. Your file: ${(file.size / 1024 / 1024 / 1024).toFixed(2)} GB`);
+        }
+      } else {
+        // Limit for local upload via Vercel Serverless Function (4.5MB)
+        const MAX_SERVERLESS_SIZE = 4.5 * 1024 * 1024; // 4.5 MB
+        if (file.size > MAX_SERVERLESS_SIZE) {
+          throw new Error(`File too large for local processing. Limit is 4.5MB. Your file: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+        }
+      }
+
       const token = await getAuthToken();
 
       // VERCEL BLOB UPLOAD (Cloud Mode)
@@ -133,7 +150,14 @@ export const apiService = {
         }
       }
 
-      // LOCAL UPLOAD (Dev Mode)
+      // LOCAL UPLOAD (Dev Mode / Fallback)
+      // Vercel Serverless Functions have a strict request body limit of 4.5MB
+      const MAX_SERVERLESS_SIZE = 4.5 * 1024 * 1024; // 4.5 MB
+
+      if (file.size > MAX_SERVERLESS_SIZE) {
+        throw new Error(`File too large for serverless upload (${(file.size / 1024 / 1024).toFixed(2)} MB). \n\nLimit is 4.5 MB when Vercel Blob is not configured.\n\nPlease configure REACT_APP_BLOB_READ_WRITE_TOKEN in Netlify to enable large file uploads (up to 4.5GB).`);
+      }
+
       console.log("FOLDER: Uploading to Local Storage via XHR...");
       console.log("📡 Target URL:", `${API_URL}/api/upload`);
       const formData = new FormData();
