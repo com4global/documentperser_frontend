@@ -1,6 +1,6 @@
 // Application constants
 export const APP_CONFIG = {
-  API_URL: process.env.REACT_APP_API_URL || 'http://localhost:10001',
+  API_URL: process.env.REACT_APP_API_URL || 'https://ragsystem-koaoq3ye1-com4globals-projects.vercel.app',
   // Production: 'https://ragsysetm-backendpart.onrender.com',
   REFRESH_INTERVAL: 10000, // 10 seconds
   MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
