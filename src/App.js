@@ -108,7 +108,7 @@ import './App.css';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { user, session } = useAuth();
+  const { session } = useAuth();
   const location = useLocation();
 
   // Wait for loading? We might need a loading state in AuthContext passed down

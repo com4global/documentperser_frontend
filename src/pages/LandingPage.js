@@ -1647,13 +1647,13 @@ import '../Styles/AdminDashboard.css';
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(null);
+  // const [selectedModel, setSelectedModel] = useState(null);
   //const [showAuthModal, setShowAuthModal] = useState(false);
   //const [authMode, setAuthMode] = useState('signin');
-  const [currentFeature, setCurrentFeature] = useState(0);
-  const [hoveredPricing, setHoveredPricing] = useState(null);
+  // const [currentFeature, setCurrentFeature] = useState(0);
+  // const [hoveredPricing, setHoveredPricing] = useState(null);
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   
   // Redirect to chat if already authenticated
   // useEffect(() => {
@@ -1696,7 +1696,7 @@ useEffect(() => {
 
     videoElement.addEventListener('ended', handleVideoEnd);
     return () => videoElement.removeEventListener('ended', handleVideoEnd);
-  }, []);
+  }, [DEMO_VIDEOS.length]);
 
   // Source Management
   useEffect(() => {
@@ -1708,7 +1708,7 @@ useEffect(() => {
         videoElement.play().catch(err => console.warn('Autoplay blocked', err));
       }
     }
-  }, [currentVideoIndex, isVideoPlaying, showDemoModal]);
+  }, [currentVideoIndex, isVideoPlaying, showDemoModal, DEMO_VIDEOS]);
 
   // ESC key to close modal
   useEffect(() => {
@@ -1768,6 +1768,7 @@ useEffect(() => {
     }
   ];
 
+
   const features = [
     {
       icon: '🎯',
@@ -1806,6 +1807,7 @@ useEffect(() => {
       demo: 'Deploy in 5 minutes'
     }
   ];
+
 
   const pricingPlans = [
     {
@@ -1860,6 +1862,7 @@ useEffect(() => {
     }
   ];
 
+
   const stats = [
     { value: '10M+', label: 'Documents Processed' },
     { value: '99.9%', label: 'Uptime SLA' },
@@ -1878,12 +1881,12 @@ useEffect(() => {
       setCurrentFeature((prev) => (prev + 1) % features.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [features.length]);
 
-  const handleAuthSuccess = () => {
-    // setShowAuthModal(false);
-    // AuthContext will handle the redirect
-  };
+  // const handleAuthSuccess = () => {
+  //   // setShowAuthModal(false);
+  //   // AuthContext will handle the redirect
+  // };
 
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', background: '#0a0a0a', color: '#fff', overflow: 'hidden' }}>

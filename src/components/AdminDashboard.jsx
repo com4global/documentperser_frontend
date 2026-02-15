@@ -47,9 +47,9 @@ export default function AdminDashboard() {
       window.removeEventListener('online', () => setIsOnline(true));
       window.removeEventListener('offline', () => setIsOnline(false));
     };
-  }, []);
+  }, [initializeDashboard, uploading, processing]);
 
-  const initializeDashboard = async () => {
+  const initializeDashboard = useCallback(async () => {
     console.log('🚀 Initializing Dashboard...');
     setLoading(true);
     try {
@@ -67,13 +67,13 @@ export default function AdminDashboard() {
       console.log('🔓 Setting loading to false');
       setLoading(false);
     }
-  };
+  }, []);
    // Add effect to log state changes
    useEffect(() => {
     console.log('📊 Dashboard State Update - Files:', files.length, 'Stats:', stats ? 'Loaded' : 'Null', 'Loading:', loading);
   }, [files, stats, loading]);
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
       const data = await apiService.fetchFiles();
       // Backend returns { files: [...], stats: {...} }
@@ -82,9 +82,9 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error fetching files:', error);
     }
-  };
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const data = await apiService.fetchStats();
       // Backend returns { files: [...], stats: {...} } OR data is stats directly
@@ -93,16 +93,16 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, []);
 
-  const fetchSupportedFormats = async () => {
+  const fetchSupportedFormats = useCallback(async () => {
     try {
       const formats = await apiService.fetchSupportedFormats();
-      setSupportedFormats(formats);
+      setSupportedFormats(formats || []);
     } catch (error) {
-      console.error('Error fetching formats:', error);
+      console.error('Error fetching supported formats:', error);
     }
-  };
+  }, []);
 
   const showNotification = useCallback((message, type) => {
     setNotification({ message, type });

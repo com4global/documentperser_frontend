@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { formatFileSize, formatDate, truncateText, getFileCategory } from '../utils/helpers';
+import { formatFileSize, formatDate, getFileCategory } from '../utils/helpers';
 import ConfirmDialog from './ConfirmDialog';
 //import '../Styles/AdminDashboard.css';
 import '../Styles/FilesTable.css';

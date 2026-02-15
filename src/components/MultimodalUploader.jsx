@@ -74,7 +74,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
     }
   };
 
-  const canUploadAndProcess = (activeTab === 'document' && selectedFile) || (activeTab === 'media' && mediaType !== 'youtube' && selectedFile);
+  // const canUploadAndProcess = (activeTab === 'document' && selectedFile) || (activeTab === 'media' && mediaType !== 'youtube' && selectedFile);
   const isBusy = uploading || !!processing;
 
   const resetFileInput = () => {
