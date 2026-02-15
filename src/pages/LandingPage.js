@@ -1645,11 +1645,17 @@ import { useAuth } from '../contexts/AuthContext';
 //import AuthModal from '../components/AuthModal';
 import '../Styles/AdminDashboard.css';
 
+const DEMO_VIDEOS = [
+  { id: 1, title: 'Platform Overview', url: '/advertiseA.mp4' },
+  { id: 2, title: 'AI Features', url: '/advertiseb.mp4' },
+  { id: 3, title: 'Enterprise Workflow', url: '/advertisec.mp4' }
+];
+
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('signin');
+  // const [showAuthModal, setShowAuthModal] = useState(false);
+  // const [authMode, setAuthMode] = useState('signin');
   const [currentFeature, setCurrentFeature] = useState(0); // Used in useEffect
   const [hoveredPricing, setHoveredPricing] = useState(null); // Used in JSX logic
   const navigate = useNavigate();
@@ -2095,7 +2101,137 @@ useEffect(() => {
         <div style={{ position: 'absolute', bottom: '20%', right: '10%', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(118, 75, 162, 0.15), transparent)', borderRadius: '50%', animation: 'float 8s ease-in-out infinite' }} />
       </section>
 
-      {/* Rest of sections (Model Selection, Features, Pricing) remain the same... */}
+      {/* Model Selection Section */}
+      <section id="models" style={{ padding: '6rem 2rem', background: '#0a0a0a' }}>
+         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            <h2 style={{ fontSize: '3rem', fontWeight: 800, textAlign: 'center', marginBottom: '4rem' }}>
+              Choose Your <span style={{ color: '#667eea' }}>Intelligence</span>
+            </h2>
+            <div style={{ display: 'flex', gap: '2rem', overflowX: 'auto', paddingBottom: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {models.map((model) => (
+                <div 
+                  key={model.id}
+                  onClick={() => setSelectedModel(model)}
+                  style={{
+                    minWidth: '280px',
+                    padding: '2rem',
+                    borderRadius: '20px',
+                    background: selectedModel?.id === model.id ? 'rgba(102, 126, 234, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                    border: `1px solid ${selectedModel?.id === model.id ? model.color : 'rgba(255, 255, 255, 0.1)'}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{model.name}</h3>
+                      {model.popular && <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem', borderRadius: '20px', background: model.color, color: '#000', fontWeight: 700 }}>HOT</span>}
+                   </div>
+                   <div style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: model.color }}>
+                      {model.price.split('/')[0]}<span style={{ fontSize: '0.9rem', color: '#9ca3af', fontWeight: 400 }}>/{model.price.split('/')[1]}</span>
+                   </div>
+                   <div style={{ marginBottom: '1.5rem', color: '#9ca3af', fontSize: '0.9rem' }}>Speed: <span style={{ color: '#fff' }}>{model.speed}</span></div>
+                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {model.features.map((feat, i) => (
+                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.9rem', color: '#d1d5db' }}>
+                           <span style={{ color: model.color }}>✓</span> {feat}
+                        </li>
+                      ))}
+                   </ul>
+                </div>
+              ))}
+            </div>
+         </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" style={{ padding: '6rem 2rem', background: 'rgba(255, 255, 255, 0.02)' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
+            <h2 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1.5rem' }}>
+              Everything you need to <span style={{ color: '#764ba2' }}>scale</span>
+            </h2>
+            <p style={{ fontSize: '1.2rem', color: '#9ca3af' }}>Enterprise-grade features built for the most demanding workloads</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+             {features.map((feature, idx) => (
+               <div 
+                  key={idx}
+                  style={{
+                    padding: '2.5rem',
+                    borderRadius: '24px',
+                    background: idx === currentFeature ? 'rgba(102, 126, 234, 0.05)' : 'rgba(255, 255, 255, 0.03)',
+                    border: idx === currentFeature ? '1px solid rgba(102, 126, 234, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)',
+                    transition: 'all 0.5s ease'
+                  }}
+               >
+                 <div style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>{feature.icon}</div>
+                 <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem' }}>{feature.title}</h3>
+                 <p style={{ color: '#9ca3af', lineHeight: 1.6, marginBottom: '1.5rem' }}>{feature.description}</p>
+                 <div style={{ fontSize: '0.9rem', color: '#667eea', fontWeight: 600 }}>{feature.demo}</div>
+               </div>
+             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" style={{ padding: '6rem 2rem', background: '#0a0a0a' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+           <h2 style={{ fontSize: '3rem', fontWeight: 800, textAlign: 'center', marginBottom: '4rem' }}>Simple, transparent pricing</h2>
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', alignItems: 'start' }}>
+             {pricingPlans.map((plan, i) => (
+               <div 
+                  key={i}
+                  onMouseEnter={() => setHoveredPricing(i)}
+                  onMouseLeave={() => setHoveredPricing(null)}
+                  style={{
+                    padding: '3rem',
+                    borderRadius: '24px',
+                    background: plan.popular ? 'linear-gradient(145deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))' : 'rgba(255, 255, 255, 0.03)',
+                    border: plan.popular ? '1px solid rgba(102, 126, 234, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    position: 'relative',
+                    transform: hoveredPricing === i ? 'translateY(-10px)' : 'translateY(0)',
+                    transition: 'all 0.3s ease'
+                  }}
+               >
+                 {plan.popular && (
+                   <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'linear-gradient(135deg, #667eea, #764ba2)', padding: '0.25rem 1rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700 }}>
+                     MOST POPULAR
+                   </div>
+                 )}
+                 <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>{plan.name}</h3>
+                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '1.5rem' }}>
+                    <span style={{ fontSize: '3rem', fontWeight: 900 }}>{plan.price}</span>
+                    <span style={{ color: '#9ca3af' }}>{plan.period}</span>
+                 </div>
+                 <p style={{ color: '#9ca3af', marginBottom: '2rem' }}>{plan.description}</p>
+                 <button style={{ 
+                    width: '100%', 
+                    padding: '1rem', 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    background: plan.popular ? '#fff' : 'rgba(255, 255, 255, 0.1)', 
+                    color: plan.popular ? '#000' : '#fff', 
+                    fontWeight: 700, 
+                    cursor: 'pointer',
+                    marginBottom: '2rem'
+                 }}>
+                   {plan.cta}
+                 </button>
+                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                   {plan.features.map((feature, f) => (
+                     <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', color: '#d1d5db' }}>
+                       <span style={{ color: '#667eea' }}>✓</span> {feature}
+                     </li>
+                   ))}
+                 </ul>
+               </div>
+             ))}
+           </div>
+        </div>
+      </section>
       {/* I'm keeping them brief here for space, but they're identical to your original */}
 
       {/* Auth Modal - NEW COMPONENT */}
