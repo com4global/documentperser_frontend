@@ -1679,11 +1679,12 @@ useEffect(() => {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const videoRef = useRef(null);
   
-  const DEMO_VIDEOS = [
-    { id: 1, title: 'Platform Overview', url: '/advertiseA.mp4' },
-    { id: 2, title: 'AI Features', url: '/advertiseb.mp4' },
-    { id: 3, title: 'Enterprise Workflow', url: '/advertisec.mp4' }
-  ];
+  // DEMO_VIDEOS moved outside component
+  // const DEMO_VIDEOS = [
+  //   { id: 1, title: 'Platform Overview', url: '/advertiseA.mp4' },
+  //   { id: 2, title: 'AI Features', url: '/advertiseb.mp4' },
+  //   { id: 3, title: 'Enterprise Workflow', url: '/advertisec.mp4' }
+  // ];
 
   // Professional Video Rotation Logic
   useEffect(() => {

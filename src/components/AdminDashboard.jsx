@@ -49,30 +49,6 @@ export default function AdminDashboard() {
     };
   }, [initializeDashboard, uploading, processing]);
 
-  const initializeDashboard = useCallback(async () => {
-    console.log('🚀 Initializing Dashboard...');
-    setLoading(true);
-    try {
-      console.log('📡 Fetching files, stats, and formats...');
-      await Promise.all([
-        fetchFiles().then(() => console.log('✅ Files fetched')),
-        fetchStats().then(() => console.log('✅ Stats fetched')),
-        fetchSupportedFormats().then(() => console.log('✅ Formats fetched'))
-      ]);
-      console.log('🎉 Dashboard initialization complete');
-    } catch (error) {
-      console.error('❌ Failed to initialize dashboard:', error);
-      showNotification('Failed to initialize dashboard', STATUS_TYPES.ERROR);
-    } finally {
-      console.log('🔓 Setting loading to false');
-      setLoading(false);
-    }
-  }, []);
-   // Add effect to log state changes
-   useEffect(() => {
-    console.log('📊 Dashboard State Update - Files:', files.length, 'Stats:', stats ? 'Loaded' : 'Null', 'Loading:', loading);
-  }, [files, stats, loading]);
-
   const fetchFiles = useCallback(async () => {
     try {
       const data = await apiService.fetchFiles();
@@ -107,6 +83,32 @@ export default function AdminDashboard() {
   const showNotification = useCallback((message, type) => {
     setNotification({ message, type });
   }, []);
+
+  const initializeDashboard = useCallback(async () => {
+    console.log('🚀 Initializing Dashboard...');
+    setLoading(true);
+    try {
+      console.log('📡 Fetching files, stats, and formats...');
+      await Promise.all([
+        fetchFiles().then(() => console.log('✅ Files fetched')),
+        fetchStats().then(() => console.log('✅ Stats fetched')),
+        fetchSupportedFormats().then(() => console.log('✅ Formats fetched'))
+      ]);
+      console.log('🎉 Dashboard initialization complete');
+    } catch (error) {
+      console.error('❌ Failed to initialize dashboard:', error);
+      showNotification('Failed to initialize dashboard', STATUS_TYPES.ERROR);
+    } finally {
+      console.log('🔓 Setting loading to false');
+      setLoading(false);
+    }
+  }, [fetchFiles, fetchStats, fetchSupportedFormats, showNotification]);
+
+   // Add effect to log state changes
+   useEffect(() => {
+    console.log('📊 Dashboard State Update - Files:', files.length, 'Stats:', stats ? 'Loaded' : 'Null', 'Loading:', loading);
+  }, [files, stats, loading]);
+
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
