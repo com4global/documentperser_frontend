@@ -1073,6 +1073,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import apiService from './services/api';
 import AdminDashboard from './components/AdminDashboard';
 import LegalAnalyzer from './components/LegalAnalyzer';
 
@@ -1131,14 +1132,12 @@ function ChatInterface() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/chat`, {
-        query: inputValue
-      });
+      const data = await apiService.sendMessage(inputValue);
 
       const botMessage = {
         id: Date.now() + 1,
-        text: response.data.response,
-        sources: response.data.sources || [],
+        text: data.response,
+        sources: data.sources || [],
         sender: 'bot',
         timestamp: new Date()
       };
@@ -1148,7 +1147,7 @@ function ChatInterface() {
       console.error('Error:', error);
       const errorMessage = {
         id: Date.now() + 2,
-        text: 'Sorry, there was an error processing your query.',
+        text: error.message || 'Sorry, there was an error processing your query.',
         sender: 'bot',
         timestamp: new Date()
       };

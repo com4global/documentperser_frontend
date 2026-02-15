@@ -1641,7 +1641,7 @@
 
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
-//import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 //import AuthModal from '../components/AuthModal';
 import '../Styles/AdminDashboard.css';
 
@@ -1653,7 +1653,7 @@ export default function LandingPage() {
   const [currentFeature, setCurrentFeature] = useState(0);
   const [hoveredPricing, setHoveredPricing] = useState(null);
   const navigate = useNavigate();
-  //const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   
   // Redirect to chat if already authenticated
   // useEffect(() => {
@@ -1662,7 +1662,11 @@ export default function LandingPage() {
   //   }
   // }, [isAuthenticated, navigate]);
   const handleStartTrial = () => {
-    navigate('/chat');
+    if (isAuthenticated) {
+      navigate('/chat');
+    } else {
+      navigate('/login');
+    }
   };
 useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -1923,9 +1927,12 @@ useEffect(() => {
             <a href="#pricing" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }}>Pricing</a>
             <a href="#docs" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }}>Docs</a>
             <button 
-              onClick={() => { 
-                // setAuthMode('signin'); 
-                // setShowAuthModal(true); 
+                onClick={() => { 
+                if (isAuthenticated) {
+                  navigate('/chat');
+                } else {
+                  navigate('/login');
+                }
               }} 
               style={{ background: 'none', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
             >
@@ -2005,8 +2012,11 @@ useEffect(() => {
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '4rem', animation: 'fadeInUp 1.4s ease' }}>
             <button 
               onClick={() => { 
-                // setAuthMode('signup'); 
-                // setShowAuthModal(true); 
+                if (isAuthenticated) {
+                  navigate('/chat');
+                } else {
+                  navigate('/login');
+                }
               }} 
               style={{
                 background: 'linear-gradient(135deg, #667eea, #764ba2)',

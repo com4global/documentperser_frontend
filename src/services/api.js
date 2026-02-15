@@ -3,11 +3,11 @@
  * Handles all API calls with automatic token management via Supabase
  */
 import { APP_CONFIG } from '../utils/constants';
-// import { put } from '@vercel/blob'; // Not used for local deployment
+import { put } from '@vercel/blob';
 import { supabase } from '../supabaseClient';
 
 const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
-// const BLOB_TOKEN = process.env.REACT_APP_BLOB_READ_WRITE_TOKEN; // Not used for local deployment
+const BLOB_TOKEN = process.env.REACT_APP_BLOB_READ_WRITE_TOKEN;
 
 // Helper to get current session token
 const getAuthToken = async () => {
@@ -90,10 +90,51 @@ export const apiService = {
     try {
       console.log("🚀 Starting upload process for:", file.name, "Size:", file.size, "Type:", file.type);
       const token = await getAuthToken();
-      console.log("🔑 Auth token:", token ? `${token.substring(0, 20)}...` : "NONE");
 
-      // Always use local upload path
-      console.log("📂 Uploading to Local Storage via XHR...");
+      // VERCEL BLOB UPLOAD (Cloud Mode)
+      if (BLOB_TOKEN) {
+        console.log("☁️ Uploading to Vercel Blob storage...");
+        try {
+          // 1. Upload to Blob
+          const blob = await put(file.name, file, {
+            access: 'public',
+            token: BLOB_TOKEN,
+            handleUploadUrl: null,
+            onUploadProgress: (progressEvent) => {
+              if (onProgress) onProgress(progressEvent.percentage);
+            }
+          });
+
+          console.log("✅ Blob uploaded:", blob.url);
+
+          // 2. Register with Backend
+          console.log("📝 Registering metadata...");
+          await authenticatedFetch('/api/register-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: file.name,
+              file_type: file.type || 'application/octet-stream',
+              file_size: file.size,
+              blob_url: blob.url
+            })
+          });
+
+          return {
+            success: true,
+            filename: file.name,
+            file_name: file.name,
+            url: blob.url
+          };
+
+        } catch (err) {
+          console.error("❌ Blob upload failed:", err);
+          throw new Error(`Cloud upload failed: ${err.message}`);
+        }
+      }
+
+      // LOCAL UPLOAD (Dev Mode)
+      console.log("FOLDER: Uploading to Local Storage via XHR...");
       console.log("📡 Target URL:", `${API_URL}/api/upload`);
       const formData = new FormData();
       formData.append('file', file);
