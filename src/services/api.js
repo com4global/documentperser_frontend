@@ -158,7 +158,7 @@ export const apiService = {
 
         try {
           // 1. Upload to Supabase 'uploads' bucket
-          const { data, error } = await supabase.storage
+          const { error } = await supabase.storage
             .from('uploads')
             .upload(fileName, file, {
               cacheControl: '3600',
