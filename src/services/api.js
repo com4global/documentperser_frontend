@@ -150,6 +150,58 @@ export const apiService = {
         }
       }
 
+      // SUPABASE STORAGE UPLOAD (Persistent Mode)
+      // Use if Blob token missing but Supabase client available
+      if (supabase && supabase.storage) {
+        console.log("☁️ Uploading to Supabase Storage...");
+        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`; // Sanitize & Unique
+
+        try {
+          // 1. Upload to Supabase 'uploads' bucket
+          const { data, error } = await supabase.storage
+            .from('uploads')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (error) {
+            console.warn("⚠️ Supabase upload failed (bucket missing or permissions?):", error.message);
+            throw error; // Fallback to local
+          }
+
+          // 2. Get Public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('uploads')
+            .getPublicUrl(fileName);
+
+          console.log("✅ Supabase File Uploaded:", publicUrl);
+
+          // 3. Register with Backend (using blob_url field for compatibility)
+          await authenticatedFetch('/api/register-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: file.name, // Original name
+              file_type: file.type || 'application/octet-stream',
+              file_size: file.size,
+              blob_url: publicUrl
+            })
+          });
+
+          return {
+            success: true,
+            filename: file.name,
+            file_name: file.name,
+            url: publicUrl
+          };
+
+        } catch (err) {
+          console.warn("⚠️ Supabase Storage failed, falling back to local:", err.message);
+          // Fallthrough to local upload below
+        }
+      }
+
       // LOCAL UPLOAD (Dev Mode / Fallback)
       // Vercel Serverless Functions have a strict request body limit of 4.5MB
       const MAX_SERVERLESS_SIZE = 4.5 * 1024 * 1024; // 4.5 MB
