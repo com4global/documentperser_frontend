@@ -222,6 +222,7 @@ export const apiService = {
       console.log("FOLDER: Uploading to Local Storage via XHR...");
       console.log("📡 Target URL:", `${API_URL}/api/upload`);
       const formData = new FormData();
+      formData.append('file', file);
 
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
