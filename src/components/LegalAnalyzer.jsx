@@ -22,7 +22,7 @@ const LegalAnalyzer = ({ onClose }) => {
     // New: History & View states
     const [viewMode, setViewMode] = useState('analyzer'); // analyzer | history
     const [history, setHistory] = useState([]);
-    const [viewingRecord, setViewingRecord] = useState(null);
+
 
     // Load history from localStorage on mount
     useEffect(() => {
@@ -108,7 +108,7 @@ const LegalAnalyzer = ({ onClose }) => {
     };
 
     const handleViewRecord = (record) => {
-        setViewingRecord(record);
+
         setAnalysis(record.analysis);
         setSelectedFile({ name: record.fileName });
         setState('results');
@@ -155,7 +155,7 @@ const LegalAnalyzer = ({ onClose }) => {
         setSelectedFile(null);
         setLoadingStep(0);
         setUrlInput('');
-        setViewingRecord(null);
+
     };
 
     // Helper to get risk color
