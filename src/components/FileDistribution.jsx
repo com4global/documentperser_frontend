@@ -1,8 +1,11 @@
 import React from 'react';
 import { getFileCategory } from '../utils/helpers';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../Styles/AdminDashboard.css';
 
 const FileDistribution = ({ distribution }) => {
+  const { t } = useLanguage();
+
   if (!distribution || Object.keys(distribution).length === 0) return null;
 
   const total = Object.values(distribution).reduce((sum, count) => sum + count, 0);
@@ -24,10 +27,10 @@ const FileDistribution = ({ distribution }) => {
       <div className="section-header">
         <h3 className="section-title">
           <span className="title-icon">📊</span>
-          File Type Distribution
+          {t('fileTypeDistribution')}
         </h3>
         <div className="section-subtitle">
-          Breakdown of {total} total files across {Object.keys(distribution).length} types
+          {t('breakdownOf')} {total} {t('totalFilesAcross')} {Object.keys(distribution).length} {t('types')}
         </div>
       </div>
 
@@ -35,8 +38,8 @@ const FileDistribution = ({ distribution }) => {
         {Object.entries(distribution).map(([type, count], index) => {
           const percentage = ((count / total) * 100).toFixed(1);
           return (
-            <div 
-              key={type} 
+            <div
+              key={type}
               className="distribution-card hover-lift"
               style={{
                 animationDelay: `${index * 0.1}s`,
@@ -49,9 +52,9 @@ const FileDistribution = ({ distribution }) => {
               </div>
               <div className="dist-count">{count}</div>
               <div className="dist-footer">
-                <div className="dist-percentage">{percentage}% of total</div>
+                <div className="dist-percentage">{percentage}% {t('ofTotal')}</div>
                 <div className="dist-bar">
-                  <div className="dist-bar-fill" style={{width: `${percentage}%`}}></div>
+                  <div className="dist-bar-fill" style={{ width: `${percentage}%` }}></div>
                 </div>
               </div>
             </div>

@@ -1526,10 +1526,10 @@ function ChatInterface() {
               }}>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e293b' }}>
-                    System Administration
+                    {t('adminDashboardTitle')}
                   </h2>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-                    Manage HR RAG Pipeline & User Metrics
+                    {t('adminDashboardSubtitle')}
                   </p>
                 </div>
                 
@@ -1551,7 +1551,7 @@ function ChatInterface() {
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
                 >
-                  Close ✕
+                  {t('close')} ✕
                 </button>
               </div>
 

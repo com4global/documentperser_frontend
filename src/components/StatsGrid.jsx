@@ -1,8 +1,11 @@
 import React from 'react';
 import { formatFileSize } from '../utils/helpers';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../Styles/AdminDashboard.css';
 
 const StatsGrid = ({ stats, loading }) => {
+  const { t } = useLanguage();
+
   if (loading) {
     return (
       <div className="stats-grid">
@@ -23,28 +26,28 @@ const StatsGrid = ({ stats, loading }) => {
     {
       icon: '📁',
       value: stats?.total_files || 0,
-      label: 'Total Files',
+      label: t('totalFiles'),
       color: 'blue',
-      trend: stats?.files_this_week > 0 ? `+${stats.files_this_week} this week` : null
+      trend: stats?.files_this_week > 0 ? `+${stats.files_this_week} ${t('thisWeek')}` : null
     },
     {
       icon: '✅',
       value: stats?.processed_files || 0,
-      label: 'Processed',
+      label: t('processed'),
       color: 'green',
       percentage: (stats?.total_files > 0) ? Math.round((stats.processed_files / stats.total_files) * 100) : 0
     },
     {
       icon: '📦',
       value: (stats?.total_chunks || 0).toLocaleString(),
-      label: 'Total Chunks',
+      label: t('totalChunks'),
       color: 'purple',
       average: (stats?.total_files > 0) ? Math.round((stats.total_chunks || 0) / stats.total_files) : 0
     },
     {
       icon: '💾',
       value: formatFileSize(stats?.total_size_bytes || 0),
-      label: 'Total Size',
+      label: t('totalSize'),
       color: 'orange'
     }
   ];
@@ -60,8 +63,8 @@ const StatsGrid = ({ stats, loading }) => {
             <div className="stat-value">{stat.value}</div>
             <div className="stat-label">{stat.label}</div>
             {stat.trend && <div className="stat-trend">📈 {stat.trend}</div>}
-            {stat.percentage !== undefined && <div className="stat-percentage">{stat.percentage}% complete</div>}
-            {stat.average !== undefined && stat.average > 0 && <div className="stat-average">~{stat.average} chunks/file</div>}
+            {stat.percentage !== undefined && <div className="stat-percentage">{stat.percentage}% {t('complete')}</div>}
+            {stat.average !== undefined && stat.average > 0 && <div className="stat-average">~{stat.average} {t('chunksPerFile')}</div>}
           </div>
         </div>
       ))}

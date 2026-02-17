@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { formatFileSize, formatDate, getFileCategory } from '../utils/helpers';
+import { useLanguage } from '../contexts/LanguageContext';
 import ConfirmDialog from './ConfirmDialog';
 //import '../Styles/AdminDashboard.css';
 import '../Styles/FilesTable.css';
 
 const FilesTable = ({ files, processing, onProcess, onDelete }) => {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [filterType, setFilterType] = useState('all');
@@ -14,10 +16,10 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
     return (
       <div className="empty-state fade-in">
         <div className="empty-icon bounce">📭</div>
-        <div className="empty-title">No files uploaded yet</div>
-        <div className="empty-text">Start by uploading your first document or media file</div>
+        <div className="empty-title">{t('noFilesTitle')}</div>
+        <div className="empty-text">{t('noFilesDesc')}</div>
         <div className="empty-hint">
-          💡 Supported formats: PDF, DOCX, XLSX, MP4, MP3, Images, and more
+          💡 {t('noFilesHint')}
         </div>
       </div>
     );
@@ -58,7 +60,7 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
           <span className="search-icon">🔍</span>
           <input
             type="text"
-            placeholder="Search files..."
+            placeholder={t('searchFiles')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -76,7 +78,7 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
           >
             {fileTypes.map(type => (
               <option key={type} value={type}>
-                {type === 'all' ? 'All Types' : type.toUpperCase()}
+                {type === 'all' ? t('allTypes') : type.toUpperCase()}
               </option>
             ))}
           </select>
@@ -86,16 +88,16 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
             onChange={(e) => setSortBy(e.target.value)}
             className="filter-select"
           >
-            <option value="date">Sort by Date</option>
-            <option value="name">Sort by Name</option>
-            <option value="size">Sort by Size</option>
+            <option value="date">{t('sortByDate')}</option>
+            <option value="name">{t('sortByName')}</option>
+            <option value="size">{t('sortBySize')}</option>
           </select>
         </div>
       </div>
 
       {/* Results Count */}
       <div className="results-count">
-        Showing {filteredFiles.length} of {files.length} files
+        {t('showing')} {filteredFiles.length} {t('of')} {files.length} {t('files')}
       </div>
 
       {/* Files Table */}
@@ -103,13 +105,13 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
         <table className="files-table">
           <thead>
             <tr>
-              <th>File Name</th>
-              <th>Type</th>
-              <th>Size</th>
-              <th>Uploaded</th>
-              <th>Status</th>
-              <th>Chunks</th>
-              <th>Actions</th>
+              <th>{t('thFileName')}</th>
+              <th>{t('thType')}</th>
+              <th>{t('thSize')}</th>
+              <th>{t('thUploaded')}</th>
+              <th>{t('thStatus')}</th>
+              <th>{t('thChunks')}</th>
+              <th>{t('thActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -146,12 +148,12 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
                     {file.status === 'completed' ? (
                       <span className="status-badge status-completed pulse-success">
                         <span className="status-icon">✓</span>
-                        Vector DB Ready
+                        {t('vectorDBReady')}
                       </span>
                     ) : (
                       <span className="status-badge status-pending">
                         <span className="status-icon">⏳</span>
-                        Pending
+                        {t('pending')}
                       </span>
                     )}
                   </td>
@@ -172,31 +174,31 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
                           className={`process-btn ${processing === file.file_name ? 'processing' : ''}`}
                           onClick={() => onProcess(file.file_name)}
                           disabled={processing === file.file_name}
-                          title="Process this file"
+                          title={t('processTooltip')}
                         >
                           {processing === file.file_name ? (
                             <>
                               <span className="btn-spinner"></span>
-                              Processing
+                              {t('processingBtn')}
                             </>
                           ) : (
                             <>
                               <span className="btn-icon">⚙️</span>
-                              Process
+                              {t('processBtn')}
                             </>
                           )}
                         </button>
                       ) : (
                         <span className="completed-label">
                           <span className="checkmark">✓</span>
-                          Completed
+                          {t('completed')}
                         </span>
                       )}
                       {onDelete && (
                         <button
                           className="delete-btn"
                           onClick={() => handleDeleteClick(file)}
-                          title="Delete this file"
+                          title={t('deleteTooltip')}
                         >
                           🗑️
                         </button>
@@ -213,12 +215,12 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
-        title="Delete File"
-        message={`Are you sure you want to delete "${deleteConfirm.file?.file_name}"? This action cannot be undone.`}
+        title={t('deleteFile')}
+        message={t('deleteConfirmMsg')}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteConfirm({ isOpen: false, file: null })}
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText={t('deleteBtn')}
+        cancelText={t('cancelBtn')}
       />
     </div>
   );

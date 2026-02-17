@@ -1097,3 +1097,313 @@
     color: #64748b;
     line-height: 1.4;
 }
+
+/* ---- View Mode Tabs ---- */
+.legal-view-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 0 32px;
+    background: #fafbfc;
+}
+
+.legal-view-tab {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legal-view-tab:hover {
+    color: var(--legal-primary);
+    background: rgba(99, 102, 241, 0.04);
+}
+
+.legal-view-tab.active {
+    color: var(--legal-primary);
+    border-bottom-color: var(--legal-primary);
+}
+
+.legal-history-badge {
+    background: var(--legal-primary);
+    color: white;
+    padding: 1px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* ---- Download PDF Button ---- */
+.legal-download-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.legal-download-btn:hover {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+/* ---- History Section ---- */
+.legal-history-section {
+    padding: 0;
+}
+
+.legal-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.legal-history-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.legal-history-subtitle {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 4px 0 0;
+}
+
+.legal-clear-history-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #fef2f2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.legal-clear-history-btn:hover {
+    background: #fee2e2;
+    border-color: #f87171;
+}
+
+/* ---- History Table ---- */
+.legal-history-table-wrapper {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.legal-history-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.legal-history-table thead {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+}
+
+.legal-history-table th {
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.legal-history-table td {
+    padding: 14px 16px;
+    font-size: 0.85rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.legal-history-row {
+    transition: all 0.15s;
+}
+
+.legal-history-row:hover {
+    background: #f8fafc;
+}
+
+.legal-history-row:last-child td {
+    border-bottom: none;
+}
+
+.legal-history-filename {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.legal-history-file-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.legal-history-name {
+    font-weight: 600;
+    color: #1e293b;
+    max-width: 250px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.legal-history-type {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.legal-history-date {
+    font-size: 0.8rem;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.legal-history-risk-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    min-width: 42px;
+}
+
+.legal-history-risk-badge.high {
+    background: var(--legal-danger-light);
+    color: var(--legal-danger);
+}
+
+.legal-history-risk-badge.medium {
+    background: var(--legal-warning-light);
+    color: var(--legal-warning);
+}
+
+.legal-history-risk-badge.low {
+    background: var(--legal-success-light);
+    color: var(--legal-success);
+}
+
+.legal-history-issues {
+    font-weight: 600;
+    text-align: center;
+}
+
+.legal-history-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.legal-history-action-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.legal-history-action-btn.view:hover {
+    background: var(--legal-primary-light);
+    border-color: var(--legal-primary);
+}
+
+.legal-history-action-btn.download:hover {
+    background: var(--legal-success-light);
+    border-color: var(--legal-success);
+}
+
+.legal-history-action-btn.delete:hover {
+    background: var(--legal-danger-light);
+    border-color: var(--legal-danger);
+}
+
+/* ---- History Empty State ---- */
+.legal-history-empty {
+    text-align: center;
+    padding: 60px 40px;
+    background: #fafbfc;
+    border: 2px dashed #e2e8f0;
+    border-radius: 16px;
+}
+
+.legal-history-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.legal-history-empty h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #475569;
+    margin: 0 0 8px;
+}
+
+.legal-history-empty p {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* ---- Responsive for History ---- */
+@media (max-width: 768px) {
+    .legal-view-tabs {
+        padding: 0 16px;
+    }
+
+    .legal-view-tab {
+        padding: 10px 14px;
+        font-size: 0.8rem;
+    }
+
+    .legal-history-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .legal-history-name {
+        max-width: 150px;
+    }
+
+    .legal-history-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+}

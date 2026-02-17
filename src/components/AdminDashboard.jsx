@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
 import { APP_CONFIG, STATUS_TYPES } from '../utils/constants';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useLanguage } from '../contexts/LanguageContext';
 import NotificationBar from './NotificationBar';
 import StatsGrid from './StatsGrid';
 import MultimodalUploader from './MultimodalUploader';
@@ -12,6 +13,8 @@ import LoadingSpinner from './LoadingSpinner';
 import '../Styles/AdminDashboard.css';
 
 export default function AdminDashboard() {
+  const { t } = useLanguage();
+
   // State Management
   const [files, setFiles] = useState([]);
   const [stats, setStats] = useState(null);
@@ -184,7 +187,7 @@ export default function AdminDashboard() {
       {!isOnline && (
         <div className="offline-banner">
           <span className="offline-icon">📡</span>
-          You are currently offline. Some features may be unavailable.
+          {t('offlineBanner')}
         </div>
       )}
 
@@ -203,21 +206,21 @@ export default function AdminDashboard() {
               <span className="logo-icon">🚀</span>
             </div>
             <div className="brand-text">
-              <h1 className="dashboard-title">Admin Dashboard</h1>
-              <p className="dashboard-subtitle">Multimodal RAG Content Management System</p>
+              <h1 className="dashboard-title">{t('adminDashboardTitle')}</h1>
+              <p className="dashboard-subtitle">{t('adminDashboardSubtitle')}</p>
             </div>
           </div>
           <div className="header-actions">
             <button 
               className="theme-toggle" 
               onClick={toggleDarkMode}
-              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              title={darkMode ? t('switchToLight') : t('switchToDark')}
             >
               {darkMode ? '☀️' : '🌙'}
             </button>
             <div className="status-indicator">
               <span className={`status-dot ${isOnline ? 'online' : 'offline'}`}></span>
-              <span className="status-text">{isOnline ? 'Online' : 'Offline'}</span>
+              <span className="status-text">{isOnline ? t('online') : t('offline')}</span>
             </div>
           </div>
         </div>
@@ -233,10 +236,10 @@ export default function AdminDashboard() {
           <div className="section-header">
             <h2 className="section-title">
               <span className="title-icon">📤</span>
-              Upload Content
+              {t('uploadContent')}
             </h2>
             <div className="section-subtitle">
-              Support for documents, videos, audio, images, and YouTube links
+              {t('uploadContentDesc')}
             </div>
           </div>
           <MultimodalUploader
@@ -255,10 +258,10 @@ export default function AdminDashboard() {
           <div className="section-header">
             <h2 className="section-title">
               <span className="title-icon">📑</span>
-              Uploaded Files
+              {t('uploadedFiles')}
             </h2>
             <div className="section-subtitle">
-              Manage and process your uploaded content
+              {t('uploadedFilesDesc')}
             </div>
           </div>
           <FilesTable
@@ -280,16 +283,16 @@ export default function AdminDashboard() {
         <div className="footer-content">
           <div className="footer-info">
             <span className="footer-text">
-              © 2024 RAG Content Management System
+              {t('dashboardFooter')}
             </span>
             <span className="footer-divider">•</span>
             <span className="footer-text">
-              Enterprise Edition
+              {t('enterpriseEdition')}
             </span>
           </div>
           <div className="footer-links">
-            <a href="#docs" className="footer-link">Documentation</a>
-            <a href="#support" className="footer-link">Support</a>
+            <a href="#docs" className="footer-link">{t('documentation')}</a>
+            <a href="#support" className="footer-link">{t('support')}</a>
             <a href="#api" className="footer-link">API</a>
           </div>
         </div>
