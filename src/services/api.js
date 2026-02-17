@@ -143,7 +143,6 @@ export const apiService = {
 
       // SUPABASE STORAGE UPLOAD (Persistent Mode)
       // Use if Blob token missing but Supabase client available
-      let supabaseError = null;
       if (supabase && supabase.storage) {
         console.log("☁️ Uploading to Supabase Storage...");
         const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`; // Sanitize & Unique
