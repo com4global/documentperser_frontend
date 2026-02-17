@@ -159,7 +159,6 @@ export const apiService = {
 
           if (error) {
             console.warn("⚠️ Supabase upload failed (bucket missing or permissions?):", error.message);
-            supabaseError = error.message;
             throw error; // Fallback to local
           }
 
