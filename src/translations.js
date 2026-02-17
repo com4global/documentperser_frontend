@@ -108,7 +108,7 @@ export const translations = {
         tabMedia: "Media",
         supportedFormats: "Supported Formats:",
         clickToBrowse: "Click to browse or drag & drop",
-        maxSize: "Maximum file size: 100MB",
+        maxSize: "Maximum file size: 500MB (large textbooks supported)",
         uploadDoc: "Upload Document",
         uploadProcess: "Upload & process to DB",
         uploadMedia: "Upload",
@@ -202,7 +202,34 @@ export const translations = {
         clearHistory: "Clear History",
         pagesAnalyzed: "pages analyzed",
         viewReport: "View",
-        generatingPdf: "Generating PDF..."
+        generatingPdf: "Generating PDF...",
+
+        // AI Teacher
+        navAITeacher: "AI Teacher",
+        aiTeacherTitle: "AI Teacher",
+        aiTeacherSubtitle: "Interactive Learning from Your Documents",
+        selectDocument: "Select a Document to Learn From",
+        chooseDocDesc: "Choose a processed document to generate interactive lessons",
+        loadingDocs: "Loading Documents...",
+        noDocsFound: "No Processed Documents",
+        backToDocs: "Back to Documents",
+        selectTopic: "Topics from",
+        topicsFromDoc: "Topics extracted strictly from this document's content",
+        extractingTopics: "Extracting Topics...",
+        analyzingDoc: "Reading document and identifying teaching topics",
+        noTopicsFound: "No Topics Found",
+        noTopicsDesc: "Could not extract topics from this document. It may need reprocessing.",
+        uploadDocsFirst: "Please upload and process documents in the Admin Panel first",
+        generatingLesson: "Generating AI Lesson...",
+        creatingDialogue: "Creating an engaging dialogue between AI teachers",
+        backToTopics: "Back to Topics",
+        sourceDoc: "Source",
+        chaptersDetected: "chapters detected",
+        keyTakeaways: "Key Takeaways",
+        quickQuiz: "Quick Quiz",
+        askQuestion: "Ask a Question",
+        typeYourQuestion: "Type your question about this topic...",
+        askBtn: "Ask"
     },
     ta: {
         // Common
@@ -408,7 +435,34 @@ export const translations = {
         clearHistory: "வரலாற்றை அழி",
         pagesAnalyzed: "பக்கங்கள் ஆய்வு செய்யப்பட்டன",
         viewReport: "காண்",
-        generatingPdf: "PDF உருவாக்குகிறது..."
+        generatingPdf: "PDF உருவாக்குகிறது...",
+
+        // AI Teacher
+        navAITeacher: "AI ஆசிரியர்",
+        aiTeacherTitle: "AI ஆசிரியர்",
+        aiTeacherSubtitle: "உங்கள் ஆவணங்களிலிருந்து ஊடாடும் கற்றல்",
+        selectDocument: "கற்க ஒரு ஆவணத்தைத் தேர்ந்தெடுக்கவும்",
+        chooseDocDesc: "ஊடாடும் பாடங்களை உருவாக்க செயலாக்கப்பட்ட ஆவணத்தைத் தேர்ந்தெடுக்கவும்",
+        loadingDocs: "ஆவணங்களை ஏற்றுகிறது...",
+        noDocsFound: "செயலாக்கப்பட்ட ஆவணங்கள் இல்லை",
+        backToDocs: "ஆவணங்களுக்குத் திரும்பு",
+        selectTopic: "தலைப்புகள்",
+        topicsFromDoc: "இந்த ஆவணத்தின் உள்ளடக்கத்திலிருந்து கண்டிப்பாகப் பிரித்தெடுக்கப்பட்ட தலைப்புகள்",
+        extractingTopics: "தலைப்புகளைப் பிரித்தெடுக்கிறது...",
+        analyzingDoc: "ஆவணத்தைப் படித்து கற்பித்தல் தலைப்புகளை அடையாளம் காணுகிறது",
+        noTopicsFound: "தலைப்புகள் கிடைக்கவில்லை",
+        noTopicsDesc: "இந்த ஆவணத்திலிருந்து தலைப்புகளைப் பிரித்தெடுக்க முடியவில்லை.",
+        uploadDocsFirst: "முதலில் நிர்வாக பேனலில் ஆவணங்களைப் பதிவேற்றி செயலாக்கவும்",
+        generatingLesson: "AI பாடத்தை உருவாக்குகிறது...",
+        creatingDialogue: "AI ஆசிரியர்களிடையே ஈர்க்கும் உரையாடலை உருவாக்குகிறது",
+        backToTopics: "தலைப்புகளுக்குத் திரும்பு",
+        sourceDoc: "ஆதாரம்",
+        chaptersDetected: "அத்தியாயங்கள் கண்டறியப்பட்டன",
+        keyTakeaways: "முக்கிய குறிப்புகள்",
+        quickQuiz: "விரைவு வினாடி வினா",
+        askQuestion: "கேள்வி கேளுங்கள்",
+        typeYourQuestion: "இந்தத் தலைப்பைப் பற்றி உங்கள் கேள்வியை தட்டச்சு செய்யுங்கள்...",
+        askBtn: "கேளு"
     }
 };
 

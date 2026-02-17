@@ -90,20 +90,10 @@ export const apiService = {
     try {
       console.log("🚀 Starting upload process for:", file.name, "Size:", file.size, "Type:", file.type);
 
-      // 0. Validate File Size
-      // Conditional size limit based on upload method
-      if (BLOB_TOKEN) {
-        // Limit for Blob Storage (5GB max supported by Vercel, setting safe 4.5GB)
-        const MAX_BLOB_SIZE = 4.5 * 1024 * 1024 * 1024;
-        if (file.size > MAX_BLOB_SIZE) {
-          throw new Error(`File too large for cloud storage. Limit is 4.5GB. Your file: ${(file.size / 1024 / 1024 / 1024).toFixed(2)} GB`);
-        }
-      } else {
-        // Limit for local upload via Vercel Serverless Function (4.5MB)
-        const MAX_SERVERLESS_SIZE = 4.5 * 1024 * 1024; // 4.5 MB
-        if (file.size > MAX_SERVERLESS_SIZE) {
-          throw new Error(`File too large for local processing. Limit is 4.5MB. Your file: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-        }
+      // 0. Validate File Size — allow large textbooks/PDFs (up to 500MB)
+      const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500 MB
+      if (file.size > MAX_UPLOAD_SIZE) {
+        throw new Error(`File too large. Maximum size is 500MB. Your file: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
       }
 
       const token = await getAuthToken();
@@ -205,18 +195,8 @@ export const apiService = {
         }
       }
 
-      // FALLBACK: Local/Server Upload (Ephemeral -> Persistent Proxy)
-      // Since we are running locally (or with a Python backend), we can handle larger files.
-      // We increased limit to 50MB to bypass the Vercel-specific check.
-      const MAX_SERVERLESS_SIZE = 50 * 1024 * 1024; // 50 MB
-
-      if (file.size > MAX_SERVERLESS_SIZE) {
-        let msg = `File too large for upload. Limit is 50MB. Your file: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
-        if (supabaseError) {
-          msg += `\n(Direct cloud upload failed: ${supabaseError})`;
-        }
-        throw new Error(msg);
-      }
+      // FALLBACK: Local/Server Upload
+      // Large textbooks are handled via batched processing on the backend
 
       console.log("🚀 PATH: Backend Proxy (Server-Side)");
       console.log("FOLDER: Uploading to Local Storage via XHR...");
@@ -373,6 +353,57 @@ export const apiService = {
       method: 'POST',
       body: formData,
       headers
+    });
+    return handleResponse(response);
+  },
+
+  // ---- EdTech AI Teacher ----
+  getEdtechDocuments: async () => {
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/documents`, { headers });
+    return handleResponse(response);
+  },
+
+  getEdtechChapters: async (docName) => {
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/chapters?doc_name=${encodeURIComponent(docName)}`, { headers });
+    return handleResponse(response);
+  },
+
+  getEdtechTopics: async (docName, language = 'en', chapter = '') => {
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    let url = `${API_URL}/api/edtech/topics?doc_name=${encodeURIComponent(docName)}&language=${language}`;
+    if (chapter) {
+      url += `&chapter=${encodeURIComponent(chapter)}`;
+    }
+    const response = await fetch(url, { headers });
+    return handleResponse(response);
+  },
+
+  generateLesson: async (topic, language = 'en') => {
+    const formData = new FormData();
+    formData.append('topic', topic);
+    formData.append('language', language);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/generate-lesson`, {
+      method: 'POST', body: formData, headers
+    });
+    return handleResponse(response);
+  },
+
+  askEdtechQuestion: async (question, topic = '', language = 'en') => {
+    const formData = new FormData();
+    formData.append('question', question);
+    formData.append('topic', topic);
+    formData.append('language', language);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/ask`, {
+      method: 'POST', body: formData, headers
     });
     return handleResponse(response);
   },

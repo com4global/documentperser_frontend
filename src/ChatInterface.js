@@ -1076,6 +1076,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import apiService from './services/api';
 import AdminDashboard from './components/AdminDashboard';
 import LegalAnalyzer from './components/LegalAnalyzer';
+import AITeacher from './components/AITeacher';
 import { useLanguage } from './contexts/LanguageContext';
 import LanguageSwitcher from './components/LanguageSwitcher';
 
@@ -1083,6 +1084,7 @@ function ChatInterface() {
   const { t, language } = useLanguage();
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
+  const [showAITeacher, setShowAITeacher] = useState(false);
   const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
   const [messages, setMessages] = useState([
     {
@@ -1287,6 +1289,13 @@ function ChatInterface() {
             label={t('navLegal')}
             active={showLegalAnalyzer}
             onClick={() => setShowLegalAnalyzer(true)}
+            collapsed={sidebarCollapsed}
+          />
+          <NavButton
+            icon="🎓"
+            label={t('navAITeacher') || 'AI Teacher'}
+            active={showAITeacher}
+            onClick={() => setShowAITeacher(true)}
             collapsed={sidebarCollapsed}
           />
         </div>
@@ -1572,6 +1581,11 @@ function ChatInterface() {
       {/* Legal Analyzer Modal */}
       {showLegalAnalyzer && (
         <LegalAnalyzer onClose={() => setShowLegalAnalyzer(false)} />
+      )}
+
+      {/* AI Teacher Modal */}
+      {showAITeacher && (
+        <AITeacher onClose={() => setShowAITeacher(false)} />
       )}
     </div>
   );
