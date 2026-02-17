@@ -283,8 +283,37 @@ const LegalAnalyzer = ({ onClose }) => {
                                 <div className="legal-card">
                                     <div className="legal-card-title">📋 Document Summary</div>
                                     <p className="legal-summary-text">{analysis.summary}</p>
+                                    {analysis.entities?.length > 0 && (
+                                        <div className="legal-entities-bar">
+                                            {analysis.entities.map((ent, i) => (
+                                                <span key={i} className="legal-entity-chip">
+                                                    {ent.name} <small>({ent.role})</small>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+
+                            {/* NEW: Critical Findings */}
+                            {analysis.critical_findings?.length > 0 && (
+                                <div className="legal-card legal-critical-card">
+                                    <div className="legal-card-title">⚡ Critical Findings ({analysis.critical_findings.length})</div>
+                                    <div className="legal-critical-grid">
+                                        {analysis.critical_findings.map((cf) => (
+                                            <div key={cf.id} className={`legal-critical-item severity-${cf.severity}`}>
+                                                <div className="legal-critical-badge">
+                                                    {cf.severity === 'high' ? '🚨' : cf.severity === 'medium' ? '⚠️' : 'ℹ️'}
+                                                </div>
+                                                <div className="legal-critical-body">
+                                                    <div className="legal-critical-finding">{cf.finding}</div>
+                                                    <div className="legal-critical-impact">{cf.impact}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Row 2: Risk Breakdown */}
                             {analysis.risk_breakdown && (
@@ -372,6 +401,54 @@ const LegalAnalyzer = ({ onClose }) => {
                                 </div>
                             </div>
 
+                            {/* NEW: Key Clauses */}
+                            {analysis.key_clauses?.length > 0 && (
+                                <div className="legal-card">
+                                    <div className="legal-card-title">📑 Key Clauses Explained ({analysis.key_clauses.length})</div>
+                                    <div className="legal-clauses-list">
+                                        {analysis.key_clauses.map((clause) => (
+                                            <div key={clause.id} className={`legal-clause-item risk-${clause.risk_level}`}>
+                                                <div className="legal-clause-header">
+                                                    <span className="legal-clause-name">{clause.clause_name}</span>
+                                                    <span className={`legal-clause-risk ${clause.risk_level}`}>
+                                                        {clause.risk_level}
+                                                    </span>
+                                                </div>
+                                                {clause.original_text && (
+                                                    <div className="legal-clause-quote">"{clause.original_text}"</div>
+                                                )}
+                                                <div className="legal-clause-plain">
+                                                    <strong>In plain English:</strong> {clause.plain_english}
+                                                </div>
+                                                {clause.notes && (
+                                                    <div className="legal-clause-notes">⚠️ {clause.notes}</div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* NEW: Financial & Cost Issues */}
+                            {analysis.financial_issues?.length > 0 && (
+                                <div className="legal-card">
+                                    <div className="legal-card-title">💰 Financial & Cost Issues ({analysis.financial_issues.length})</div>
+                                    <div className="legal-financial-list">
+                                        {analysis.financial_issues.map((fi) => (
+                                            <div key={fi.id} className={`legal-financial-item risk-${fi.risk_level}`}>
+                                                <div className="legal-financial-header">
+                                                    <span className="legal-financial-title">{fi.title}</span>
+                                                    <span className={`legal-financial-amount risk-${fi.risk_level}`}>
+                                                        {fi.amount}
+                                                    </span>
+                                                </div>
+                                                <p className="legal-financial-desc">{fi.description}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Row 4: Conflicts */}
                             <div className="legal-card">
                                 <div className="legal-card-title">
@@ -402,6 +479,32 @@ const LegalAnalyzer = ({ onClose }) => {
                                     </div>
                                 )}
                             </div>
+
+                            {/* NEW: Spelling & Grammar */}
+                            {analysis.spelling_grammar_issues?.length > 0 && (
+                                <div className="legal-card">
+                                    <div className="legal-card-title">✏️ Spelling & Grammar ({analysis.spelling_grammar_issues.length})</div>
+                                    <div className="legal-spelling-list">
+                                        {analysis.spelling_grammar_issues.map((sg) => (
+                                            <div key={sg.id} className="legal-spelling-item">
+                                                <div className="legal-spelling-text">
+                                                    <span className="legal-spelling-wrong">{sg.text}</span>
+                                                    {sg.suggestion && (
+                                                        <>
+                                                            <span className="legal-spelling-arrow">→</span>
+                                                            <span className="legal-spelling-fix">{sg.suggestion}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className="legal-spelling-issue">{sg.issue}</div>
+                                                {sg.location && (
+                                                    <span className="legal-meta-tag page">{sg.location}</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                         </div>
                     )}
