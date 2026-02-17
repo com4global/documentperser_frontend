@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import '../Styles/AdminDashboard.css';
 
 const DEMO_VIDEOS = [
@@ -10,6 +12,7 @@ const DEMO_VIDEOS = [
 ];
 
 export default function LandingPage() {
+  const { t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
   const [currentFeature, setCurrentFeature] = useState(0);
@@ -78,10 +81,10 @@ export default function LandingPage() {
   ];
 
   const stats = [
-    { value: '10M+', label: 'Documents Processed' },
-    { value: '99.9%', label: 'Uptime SLA' },
-    { value: '< 200ms', label: 'Average Response' },
-    { value: '50K+', label: 'Happy Users' }
+    { value: '10M+', label: t('statsDocs') },
+    { value: '99.9%', label: t('statsUptime') },
+    { value: '< 200ms', label: t('statsResponse') },
+    { value: '50K+', label: t('statsUsers') }
   ];
 
   useEffect(() => {
@@ -104,38 +107,40 @@ export default function LandingPage() {
             <div style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold', boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)' }}>
               🚀
             </div>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>RAG.AI</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 800, background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('appName')}</span>
           </div>
           <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'center' }}>
-            <a href="#features" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>Features</a>
-            <a href="#pricing" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>Pricing</a>
-            <a href="#docs" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>Docs</a>
-            <button onClick={() => { if (isAuthenticated) { navigate('/chat'); } else { navigate('/login'); } }} style={{ background: 'none', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Sign In</button>
-            <button onClick={handleStartTrial} style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)' }}>Start Free →</button>
+            <LanguageSwitcher />
+            <a href="#features" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>{t('navFeatures')}</a>
+            <a href="#pricing" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>{t('navPricing')}</a>
+            <a href="#docs" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>{t('navDocs')}</a>
+            <button onClick={() => { if (isAuthenticated) { navigate('/chat'); } else { navigate('/login'); } }} style={{ background: 'none', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>{t('signIn')}</button>
+            <button onClick={handleStartTrial} style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)' }}>{t('startFree')} →</button>
           </div>
         </div>
-      </nav>
+      </nav >
 
       {/* Hero Section */}
-      <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 50% 0%, rgba(102, 126, 234, 0.15), transparent 50%), radial-gradient(circle at 0% 100%, rgba(118, 75, 162, 0.15), transparent 50%)', position: 'relative', padding: '8rem 2rem 4rem' }}>
+      < section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 50% 0%, rgba(102, 126, 234, 0.15), transparent 50%), radial-gradient(circle at 0% 100%, rgba(118, 75, 162, 0.15), transparent 50%)', position: 'relative', padding: '8rem 2rem 4rem' }
+      }>
         <div style={{ maxWidth: '1400px', width: '100%', textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(102, 126, 234, 0.1)', border: '1px solid rgba(102, 126, 234, 0.3)', padding: '0.5rem 1.25rem', borderRadius: '50px', marginBottom: '2rem', animation: 'fadeInDown 0.8s ease' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#667eea' }}>✨ NEW</span>
             <span style={{ fontSize: '0.85rem', color: '#d1d5db' }}>Claude Sonnet 4 Now Available</span>
           </div>
           <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 5rem)', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.5rem', background: 'linear-gradient(135deg, #fff 0%, #d1d5db 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', animation: 'fadeInUp 1s ease' }}>
-            Your Enterprise<br/>
-            <span style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Knowledge Assistant</span>
+            {t('heroTitle').split(' ').slice(0, 2).join(' ')}<br />
+            <span style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('heroTitle').split(' ').slice(2).join(' ')}</span>
           </h1>
           <p style={{ fontSize: '1.35rem', color: '#9ca3af', maxWidth: '700px', margin: '0 auto 3rem', lineHeight: 1.6, animation: 'fadeInUp 1.2s ease' }}>
-            Process any document, video, or audio file. Get instant AI-powered answers from your data with GPT-4, Claude, or Gemini.
+            {t('heroSubtitle')}
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '4rem', animation: 'fadeInUp 1.4s ease' }}>
             <button onClick={() => { if (isAuthenticated) { navigate('/chat'); } else { navigate('/login'); } }} style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', border: 'none', padding: '1rem 2.5rem', borderRadius: '12px', color: '#fff', fontSize: '1.1rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)', transition: 'transform 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Start Free Trial <span style={{ fontSize: '1.2rem' }}>→</span>
+              {t('startFree')} <span style={{ fontSize: '1.2rem' }}>→</span>
             </button>
             <button onClick={() => { setShowDemoModal(true); setIsVideoPlaying(true); setCurrentVideoIndex(0); }} style={{ background: 'rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '1rem 2.5rem', borderRadius: '12px', color: '#fff', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-              <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea, #764ba2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>&#9654;</span> Watch Demo
+              <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea, #764ba2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>&#9654;</span> {t('watchDemo')}
             </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem', maxWidth: '800px', margin: '0 auto', animation: 'fadeInUp 1.6s ease' }}>
@@ -147,13 +152,13 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Model Selection */}
-      <section id="models" style={{ padding: '6rem 2rem', background: '#0a0a0a' }}>
+      < section id="models" style={{ padding: '6rem 2rem', background: '#0a0a0a' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', background: 'linear-gradient(135deg, #fff, #d1d5db)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Choose Your AI Model</h2>
-          <p style={{ textAlign: 'center', color: '#9ca3af', marginBottom: '3rem', fontSize: '1.1rem' }}>Select the best model for your needs</p>
+          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', background: 'linear-gradient(135deg, #fff, #d1d5db)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('modelTitle')}</h2>
+          <p style={{ textAlign: 'center', color: '#9ca3af', marginBottom: '3rem', fontSize: '1.1rem' }}>{t('modelSubtitle')}</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
             {models.map((model) => (
               <div key={model.id} onClick={() => setSelectedModel(model.id)} style={{ background: selectedModel === model.id ? 'rgba(102, 126, 234, 0.15)' : 'rgba(255, 255, 255, 0.03)', border: selectedModel === model.id ? '2px solid #667eea' : '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '2rem', cursor: 'pointer', transition: 'all 0.3s ease', position: 'relative' }}>
@@ -171,13 +176,13 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Features */}
-      <section id="features" style={{ padding: '6rem 2rem', background: 'linear-gradient(180deg, #0a0a0a 0%, #111 100%)' }}>
+      < section id="features" style={{ padding: '6rem 2rem', background: 'linear-gradient(180deg, #0a0a0a 0%, #111 100%)' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', background: 'linear-gradient(135deg, #fff, #d1d5db)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Powerful Features</h2>
-          <p style={{ textAlign: 'center', color: '#9ca3af', marginBottom: '3rem', fontSize: '1.1rem' }}>Everything you need for enterprise AI</p>
+          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', background: 'linear-gradient(135deg, #fff, #d1d5db)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('featuresTitle')}</h2>
+          <p style={{ textAlign: 'center', color: '#9ca3af', marginBottom: '3rem', fontSize: '1.1rem' }}>{t('featuresSubtitle')}</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
             {features.map((feature, idx) => (
               <div key={idx} style={{ background: currentFeature === idx ? 'rgba(102, 126, 234, 0.1)' : 'rgba(255, 255, 255, 0.03)', border: currentFeature === idx ? '1px solid rgba(102, 126, 234, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '2rem', transition: 'all 0.5s ease' }}>
@@ -189,13 +194,13 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Pricing */}
-      <section id="pricing" style={{ padding: '6rem 2rem', background: '#0a0a0a' }}>
+      < section id="pricing" style={{ padding: '6rem 2rem', background: '#0a0a0a' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', background: 'linear-gradient(135deg, #fff, #d1d5db)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Simple Pricing</h2>
-          <p style={{ textAlign: 'center', color: '#9ca3af', marginBottom: '3rem', fontSize: '1.1rem' }}>Start free. Scale as you grow.</p>
+          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', background: 'linear-gradient(135deg, #fff, #d1d5db)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('pricingTitle')}</h2>
+          <p style={{ textAlign: 'center', color: '#9ca3af', marginBottom: '3rem', fontSize: '1.1rem' }}>{t('pricingSubtitle')}</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
             {pricingPlans.map((plan, idx) => (
               <div key={idx} onMouseEnter={() => setHoveredPricing(idx)} onMouseLeave={() => setHoveredPricing(null)} style={{ background: plan.popular ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15))' : 'rgba(255, 255, 255, 0.03)', border: plan.popular ? '2px solid #667eea' : '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', padding: '2.5rem', transition: 'all 0.3s ease', transform: hoveredPricing === idx ? 'translateY(-5px)' : 'none', position: 'relative' }}>
@@ -216,26 +221,28 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Demo Video Modal */}
-      {showDemoModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => { setShowDemoModal(false); setIsVideoPlaying(false); }}>
-          <div style={{ maxWidth: '900px', width: '100%', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => { setShowDemoModal(false); setIsVideoPlaying(false); }} style={{ position: 'absolute', top: '-40px', right: 0, background: 'none', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer' }}>×</button>
-            <video ref={videoRef} controls autoPlay style={{ width: '100%', borderRadius: '12px' }} />
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'center' }}>
-              {DEMO_VIDEOS.map((video, idx) => (
-                <button key={video.id} onClick={() => { setCurrentVideoIndex(idx); setIsVideoPlaying(true); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: currentVideoIndex === idx ? '1px solid #667eea' : '1px solid rgba(255,255,255,0.2)', background: currentVideoIndex === idx ? 'rgba(102,126,234,0.2)' : 'transparent', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}>{video.title}</button>
-              ))}
+      {
+        showDemoModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => { setShowDemoModal(false); setIsVideoPlaying(false); }}>
+            <div style={{ maxWidth: '900px', width: '100%', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => { setShowDemoModal(false); setIsVideoPlaying(false); }} style={{ position: 'absolute', top: '-40px', right: 0, background: 'none', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer' }}>×</button>
+              <video ref={videoRef} controls autoPlay style={{ width: '100%', borderRadius: '12px' }} />
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'center' }}>
+                {DEMO_VIDEOS.map((video, idx) => (
+                  <button key={video.id} onClick={() => { setCurrentVideoIndex(idx); setIsVideoPlaying(true); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: currentVideoIndex === idx ? '1px solid #667eea' : '1px solid rgba(255,255,255,0.2)', background: currentVideoIndex === idx ? 'rgba(102,126,234,0.2)' : 'transparent', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}>{video.title}</button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Footer */}
       <footer style={{ padding: '3rem 2rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
-        <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>© 2024 RAG.AI. All rights reserved.</p>
+        <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>{t('footerRights')}</p>
       </footer>
 
       <style>{`
@@ -245,6 +252,6 @@ export default function LandingPage() {
         button:hover { transform: translateY(-2px); }
         a:hover { color: #667eea !important; }
       `}</style>
-    </div>
+    </div >
   );
 }

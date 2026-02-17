@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../Styles/Auth.css';
 
 const LoginPage = () => {
+    const { t } = useLanguage();
     const { login, signUp, signInWithGoogle } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -55,8 +57,8 @@ const LoginPage = () => {
         <div className="auth-page-container">
             <div className="auth-glass-card">
                 <div className="auth-header">
-                    <h1>{isLogin ? 'Welcome Back' : 'Get Started'}</h1>
-                    <p>{isLogin ? 'Sign in to your Zenzee account' : 'Create an account to start chatting'}</p>
+                    <h1>{isLogin ? t('welcomeBack') : t('getStarted')}</h1>
+                    <p>{isLogin ? t('signInDesc') : t('signUpDesc')}</p>
                 </div>
 
                 {error && <div className="error-banner">{error}</div>}
@@ -76,7 +78,7 @@ const LoginPage = () => {
                 </button>
 
                 <div className="auth-divider">
-                    <span>OR</span>
+                    <span>{t('or')}</span>
                 </div>
 
                 <form onSubmit={handleSubmit} className="auth-form">
@@ -128,7 +130,7 @@ const LoginPage = () => {
                 </form>
 
                 <div className="auth-footer">
-                    {isLogin ? "Don't have an account?" : "Already have an account?"}
+                    {isLogin ? t('noAccount') : t('haveAccount')}
                     <span
                         className="auth-link"
                         onClick={() => {
@@ -136,7 +138,7 @@ const LoginPage = () => {
                             setError('');
                         }}
                     >
-                        {isLogin ? 'Create Account' : 'Sign In'}
+                        {isLogin ? t('createAccount') : t('signIn')}
                     </span>
                 </div>
             </div>

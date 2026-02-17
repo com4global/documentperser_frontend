@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { MEDIA_TYPES, APP_CONFIG } from '../utils/constants';
 import { isValidYouTubeUrl, validateFileSize } from '../utils/helpers';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../Styles/AdminDashboard.css';
 
 const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processing, supportedFormats, selectedFile, onFileSelect }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('document');
   const [urlInput, setUrlInput] = useState('');
   const [mediaType, setMediaType] = useState('youtube');
@@ -92,7 +94,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
           onClick={() => { setActiveTab('document'); resetFileInput(); }}
         >
           <span className="tab-icon">📄</span>
-          <span className="tab-label">Documents</span>
+          <span className="tab-label">{t('tabDocs')}</span>
           <span className="tab-badge">{supportedFormats.length} formats</span>
         </button>
         <button
@@ -100,7 +102,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
           onClick={() => { setActiveTab('media'); resetFileInput(); }}
         >
           <span className="tab-icon">🎬</span>
-          <span className="tab-label">Media</span>
+          <span className="tab-label">{t('tabMedia')}</span>
           <span className="tab-badge">4 types</span>
         </button>
       </div>
@@ -111,7 +113,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
           <div className="document-upload fade-in">
             {/* Format Chips */}
             <div className="format-chips-container">
-              <label className="format-label">Supported Formats:</label>
+              <label className="format-label">{t('supportedFormats')}</label>
               <div className="format-chips">
                 {supportedFormats.map(format => (
                   <span key={format} className="format-chip">{format}</span>
@@ -162,8 +164,8 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                 ) : (
                   <>
                     <div className="drop-icon pulse">📎</div>
-                    <div className="drop-text">Click to browse or drag & drop</div>
-                    <div className="drop-hint">Maximum file size: 100MB</div>
+                    <div className="drop-text">{t('clickToBrowse')}</div>
+                    <div className="drop-hint">{t('maxSize')}</div>
                   </>
                 )}
               </label>
@@ -192,12 +194,12 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                 {uploading ? (
                   <>
                     <span className="btn-spinner"></span>
-                    Uploading... {uploadProgress > 0 ? `${Math.round(uploadProgress)}%` : ''}
+                    {t('uploading')} {uploadProgress > 0 ? `${Math.round(uploadProgress)}%` : ''}
                   </>
                 ) : (
                   <>
                     <span className="btn-icon">✅</span>
-                    Upload Document
+                    {t('uploadDoc')}
                   </>
                 )}
               </button>
@@ -211,12 +213,12 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                   {processing ? (
                     <>
                       <span className="btn-spinner"></span>
-                      Processing...
+                      {t('processing')}
                     </>
                   ) : (
                     <>
                       <span className="btn-icon">⚙️</span>
-                      Upload & process to DB
+                      {t('uploadProcess')}
                     </>
                   )}
                 </button>
@@ -245,7 +247,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
               <div className="url-input-section">
                 <label className="input-label">
                   <span className="label-icon">🎬</span>
-                  YouTube Video URL
+                  {t('enterYoutubeUrl')}
                 </label>
                 <div className="url-input-wrapper">
                   <input
@@ -271,7 +273,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                 </div>
                 {urlError && <div className="input-error">{urlError}</div>}
                 <div className="input-hint">
-                  💡 Tip: Paste a YouTube video URL to automatically transcribe and index the content
+                  💡 {t('tipYoutube')}
                 </div>
                 <button
                   onClick={handleMediaUpload}
@@ -281,12 +283,12 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                   {uploading ? (
                     <>
                       <span className="btn-spinner"></span>
-                      Processing Video...
+                      {t('processingVideo')}
                     </>
                   ) : (
                     <>
                       <span className="btn-icon">🚀</span>
-                      Process YouTube Video
+                      {t('processVideo')}
                     </>
                   )}
                 </button>
@@ -294,7 +296,7 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
             ) : (
               <div className="file-upload-section">
                 <div className="format-chips-container">
-                  <label className="format-label">Supported Formats:</label>
+                  <label className="format-label">{t('supportedFormats')}</label>
                   <div className="format-chips">
                     {MEDIA_TYPES[mediaType].formats.map(format => (
                       <span key={format} className="format-chip">{format}</span>
@@ -342,8 +344,8 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                     ) : (
                       <>
                         <div className="drop-icon pulse">{MEDIA_TYPES[mediaType].icon}</div>
-                        <div className="drop-text">Click to browse or drag & drop</div>
-                        <div className="drop-hint">Maximum file size: 100MB</div>
+                        <div className="drop-text">{t('clickToBrowse')}</div>
+                        <div className="drop-hint">{t('maxSize')}</div>
                       </>
                     )}
                   </label>
@@ -370,12 +372,12 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                     {uploading ? (
                       <>
                         <span className="btn-spinner"></span>
-                        Uploading...
+                        {t('uploading')}
                       </>
                     ) : (
                       <>
                         <span className="btn-icon">✅</span>
-                        Upload {MEDIA_TYPES[mediaType].label}
+                        {t('uploadMedia')} {MEDIA_TYPES[mediaType].label}
                       </>
                     )}
                   </button>
@@ -389,12 +391,12 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
                       {processing ? (
                         <>
                           <span className="btn-spinner"></span>
-                          Processing...
+                          {t('processing')}
                         </>
                       ) : (
                         <>
                           <span className="btn-icon">⚙️</span>
-                          Upload & process to DB
+                          {t('uploadProcess')}
                         </>
                       )}
                     </button>

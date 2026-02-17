@@ -1076,8 +1076,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import apiService from './services/api';
 import AdminDashboard from './components/AdminDashboard';
 import LegalAnalyzer from './components/LegalAnalyzer';
+import { useLanguage } from './contexts/LanguageContext';
+import LanguageSwitcher from './components/LanguageSwitcher';
 
 function ChatInterface() {
+  const { t, language } = useLanguage();
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
   const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
@@ -1103,6 +1106,13 @@ function ChatInterface() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Update welcome message when language changes
+  useEffect(() => {
+    setMessages(prev => prev.map(msg => 
+      msg.id === 1 ? { ...msg, text: t('welcomeMessage') } : msg
+    ));
+  }, [language, t]);
 
   useEffect(() => {
     scrollToBottom();
@@ -1132,7 +1142,7 @@ function ChatInterface() {
     setLoading(true);
 
     try {
-      const data = await apiService.sendMessage(inputValue);
+      const data = await apiService.sendMessage(inputValue, null, language);
 
       const botMessage = {
         id: Date.now() + 1,
@@ -1147,7 +1157,7 @@ function ChatInterface() {
       console.error('Error:', error);
       const errorMessage = {
         id: Date.now() + 2,
-        text: error.message || 'Sorry, there was an error processing your query.',
+        text: error.message || t('error') + ': ' + t('tryAgain'),
         sender: 'bot',
         timestamp: new Date()
       };
@@ -1201,7 +1211,7 @@ function ChatInterface() {
               color: '#202124'
             }}>
               <span style={{ fontSize: '28px' }}>🚀</span>
-              Zenzee
+              {t('appName')}
             </div>
           )}
           <button
@@ -1252,7 +1262,7 @@ function ChatInterface() {
             }}
           >
             <span style={{ fontSize: '20px' }}>✨</span>
-            {!sidebarCollapsed && <span>New chat</span>}
+            {!sidebarCollapsed && <span>{t('newChat')}</span>}
           </button>
         </div>
 
@@ -1260,21 +1270,21 @@ function ChatInterface() {
         <div style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
           <NavButton
             icon="💬"
-            label="Chat"
+            label={t('navChat')}
             active={!showAdminPanel}
             onClick={() => setShowAdminPanel(false)}
             collapsed={sidebarCollapsed}
           />
           <NavButton
             icon="⚙️"
-            label="Admin Panel"
+            label={t('navAdmin')}
             active={showAdminPanel}
             onClick={() => setShowAdminPanel(true)}
             collapsed={sidebarCollapsed}
           />
           <NavButton
             icon="⚖️"
-            label="Legal Analyzer"
+            label={t('navLegal')}
             active={showLegalAnalyzer}
             onClick={() => setShowLegalAnalyzer(true)}
             collapsed={sidebarCollapsed}
@@ -1285,7 +1295,7 @@ function ChatInterface() {
         <div style={{ padding: '8px', borderTop: '1px solid #e8eaed' }}>
           <NavButton
             icon="🚪"
-            label="Log out"
+            label={t('navLogout')}
             onClick={handleLogout}
             collapsed={sidebarCollapsed}
           />
@@ -1313,16 +1323,17 @@ function ChatInterface() {
                 fontWeight: 400,
                 color: '#202124'
               }}>
-                Document Assistant
+                {t('subTitle')}
               </h1>
               <p style={{
                 margin: '4px 0 0 0',
                 fontSize: '13px',
                 color: '#5f6368'
               }}>
-                Powered by Zenzee
+                {t('poweredBy')}
               </p>
             </div>
+            <LanguageSwitcher />
           </div>
 
           {/* Messages Area */}
@@ -1408,7 +1419,7 @@ function ChatInterface() {
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask me about HR policies..."
+                  placeholder={t('chatPlaceholder')}
                   disabled={loading}
                   style={{
                     flex: 1,
@@ -1456,7 +1467,7 @@ function ChatInterface() {
                 color: '#5f6368',
                 marginTop: '12px'
               }}>
-                RAG AI can make mistakes. Check important info.
+                {t('mistakeWarning')}
               </p>
             </form>
           </div>

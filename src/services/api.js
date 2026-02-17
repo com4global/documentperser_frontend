@@ -52,11 +52,11 @@ const authenticatedFetch = async (endpoint, options = {}) => {
 
 export const apiService = {
   // Chat API
-  sendMessage: async (query, sessionId = null) => {
+  sendMessage: async (query, sessionId = null, language = 'en') => {
     return authenticatedFetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, session_id: sessionId }) // Backend expects session_id
+      body: JSON.stringify({ query, session_id: sessionId, language }) // Backend expects session_id & language
     });
   },
 
@@ -362,6 +362,7 @@ export const apiService = {
     const formData = new FormData();
     if (payload.file) formData.append('file', payload.file);
     if (payload.url) formData.append('url', payload.url);
+    if (payload.language) formData.append('language', payload.language);
 
     // Cannot use authenticatedFetch easily with FormData + automatic Content-Type
     // So we use fetch manually

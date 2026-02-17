@@ -26,34 +26,16 @@ export default function AdminDashboard() {
   // Persist dark mode preference
   const [darkMode, setDarkMode] = useLocalStorage('darkMode', false);
 
-  const fetchFiles = useCallback(async () => {
+  // Single fetch that gets both files AND stats from the same /api/files endpoint
+  const fetchDashboardData = useCallback(async () => {
     try {
       const data = await apiService.fetchFiles();
-      // Backend returns { files: [...], stats: {...} }
       const filesList = Array.isArray(data) ? data : (data?.files || []);
+      const statsData = data?.stats || null;
       setFiles(filesList);
+      if (statsData) setStats(statsData);
     } catch (error) {
-      console.error('Error fetching files:', error);
-    }
-  }, []);
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const data = await apiService.fetchStats();
-      // Backend returns { files: [...], stats: {...} } OR data is stats directly
-      const statsData = data?.stats || data;
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  }, []);
-
-  const fetchSupportedFormats = useCallback(async () => {
-    try {
-      const formats = await apiService.fetchSupportedFormats();
-      setSupportedFormats(formats || []);
-    } catch (error) {
-      console.error('Error fetching supported formats:', error);
+      console.error('Error fetching dashboard data:', error);
     }
   }, []);
 
@@ -61,54 +43,43 @@ export default function AdminDashboard() {
     setNotification({ message, type });
   }, []);
 
-  const initializeDashboard = useCallback(async () => {
-    console.log('🚀 Initializing Dashboard...');
-    setLoading(true);
-    try {
-      console.log('📡 Fetching files, stats, and formats...');
-      await Promise.all([
-        fetchFiles().then(() => console.log('✅ Files fetched')),
-        fetchStats().then(() => console.log('✅ Stats fetched')),
-        fetchSupportedFormats().then(() => console.log('✅ Formats fetched'))
-      ]);
-      console.log('🎉 Dashboard initialization complete');
-    } catch (error) {
-      console.error('❌ Failed to initialize dashboard:', error);
-      showNotification('Failed to initialize dashboard', STATUS_TYPES.ERROR);
-    } finally {
-      console.log('🔓 Setting loading to false');
-      setLoading(false);
-    }
-  }, [fetchFiles, fetchStats, fetchSupportedFormats, showNotification]);
-
-  // Initialize data
+  // Initialize data — single fetch + static formats (no network needed)
   useEffect(() => {
-    initializeDashboard();
+    let cancelled = false;
+    const init = async () => {
+      try {
+        // Formats are static, set them immediately (no API call)
+        setSupportedFormats(['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml',
+          '.mp4', '.avi', '.mov', '.mp3', '.wav', '.jpg', '.png', '.jpeg']);
+        await fetchDashboardData();
+      } catch (error) {
+        if (!cancelled) showNotification('Failed to initialize dashboard', STATUS_TYPES.ERROR);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    init();
     
-    // Polling for updates
+    // Polling for updates — single call instead of two
     const interval = setInterval(() => {
       if (!uploading && !processing) {
-        fetchFiles();
-        fetchStats();
+        fetchDashboardData();
       }
     }, APP_CONFIG.REFRESH_INTERVAL);
     
-    // Network status monitoring
-    window.addEventListener('online', () => setIsOnline(true));
-    window.addEventListener('offline', () => setIsOnline(false));
+    // Network status monitoring with stable refs for proper cleanup
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     
     return () => {
+      cancelled = true;
       clearInterval(interval);
-      window.removeEventListener('online', () => setIsOnline(true));
-      window.removeEventListener('offline', () => setIsOnline(false));
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
-  }, [initializeDashboard, uploading, processing, fetchFiles, fetchStats]);
-
-
-   // Add effect to log state changes
-   useEffect(() => {
-    console.log('📊 Dashboard State Update - Files:', files.length, 'Stats:', stats ? 'Loaded' : 'Null', 'Loading:', loading);
-  }, [files, stats, loading]);
+  }, [fetchDashboardData, uploading, processing, showNotification]);
 
 
   const handleFileSelect = (event) => {
@@ -135,7 +106,7 @@ export default function AdminDashboard() {
       }
       
       setSelectedFile(null);
-      await Promise.all([fetchFiles(), fetchStats()]);
+      await fetchDashboardData();
     } catch (error) {
       showNotification(
         `❌ Upload failed: ${error.message}`, 
@@ -155,7 +126,7 @@ export default function AdminDashboard() {
       const uploadResult = await apiService.uploadFile(file, onProgress);
       const filename = uploadResult?.file_name ?? uploadResult?.filename ?? uploadResult?.file?.file_name ?? file?.name;
       setSelectedFile(null);
-      await Promise.all([fetchFiles(), fetchStats()]);
+      await fetchDashboardData();
       if (!filename) {
         showNotification('✅ File uploaded. Process it from the list below.', STATUS_TYPES.SUCCESS);
         setUploading(false);
@@ -177,7 +148,7 @@ export default function AdminDashboard() {
     try {
       await apiService.processFile(filename);
       showNotification(`🎉 ${filename} processed successfully!`, STATUS_TYPES.SUCCESS);
-      await Promise.all([fetchFiles(), fetchStats()]);
+      await fetchDashboardData();
     } catch (error) {
       showNotification(`❌ Processing failed: ${error.message}`, STATUS_TYPES.ERROR);
     } finally {
@@ -189,7 +160,7 @@ export default function AdminDashboard() {
     try {
       await apiService.deleteFile(filename);
       showNotification(`🗑️ ${filename} deleted successfully`, STATUS_TYPES.SUCCESS);
-      await Promise.all([fetchFiles(), fetchStats()]);
+      await fetchDashboardData();
     } catch (error) {
       showNotification(`❌ Delete failed: ${error.message}`, STATUS_TYPES.ERROR);
     }

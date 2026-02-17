@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import apiService from '../services/api';
+import { useLanguage } from '../contexts/LanguageContext';
 import '../Styles/LegalAnalyzer.css';
 
 const LegalAnalyzer = ({ onClose }) => {
+    const { t, language } = useLanguage();
     const [state, setState] = useState('upload'); // upload | loading | results | error
     const [analysis, setAnalysis] = useState(null);
     const [error, setError] = useState('');
@@ -47,7 +49,7 @@ const LegalAnalyzer = ({ onClose }) => {
         const stepTimer3 = setTimeout(() => setLoadingStep(3), 6000);
 
         try {
-            const result = await apiService.analyzeLegalDocument(payload);
+            const result = await apiService.analyzeLegalDocument({ ...payload, language });
             clearTimeout(stepTimer1);
             clearTimeout(stepTimer2);
             clearTimeout(stepTimer3);
@@ -149,14 +151,14 @@ const LegalAnalyzer = ({ onClose }) => {
                     <div className="legal-header-left">
                         <div className="legal-header-icon">⚖️</div>
                         <div>
-                            <h2>Legal Document Analyzer</h2>
-                            <p>AI-powered analysis for legal, banking, real estate, and multimedia content</p>
+                            <h2>{t('legalTitle')}</h2>
+                            <p>{t('legalSubtitle')}</p>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         {state === 'results' && (
                             <button className="legal-new-analysis-btn" onClick={resetAnalyzer}>
-                                📄 New Analysis
+                                📄 {t('newAnalysis')}
                             </button>
                         )}
                         <button className="legal-close-btn" onClick={onClose}>✕</button>
@@ -173,19 +175,19 @@ const LegalAnalyzer = ({ onClose }) => {
                                     className={`legal-tab-btn ${activeTab === 'upload' ? 'active' : ''}`}
                                     onClick={() => setActiveTab('upload')}
                                 >
-                                    Upload File
+                                    {t('uploadTab')}
                                 </button>
                                 <button
                                     className={`legal-tab-btn ${activeTab === 'link' ? 'active' : ''}`}
                                     onClick={() => setActiveTab('link')}
                                 >
-                                    Web Link
+                                    {t('linkTab')}
                                 </button>
                                 <button
                                     className={`legal-tab-btn ${activeTab === 'youtube' ? 'active' : ''}`}
                                     onClick={() => setActiveTab('youtube')}
                                 >
-                                    YouTube Video
+                                    {t('youtubeTab')}
                                 </button>
                             </div>
 
@@ -198,8 +200,8 @@ const LegalAnalyzer = ({ onClose }) => {
                                     onClick={() => fileInputRef.current?.click()}
                                 >
                                     <span className="legal-upload-icon">📋</span>
-                                    <h3>Upload Your Content</h3>
-                                    <p>Drag & drop Document, Image, Audio, or Video files</p>
+                                    <h3>{t('uploadTitle')}</h3>
+                                    <p>{t('uploadDesc')}</p>
                                     <div className="legal-upload-formats">
                                         {['PDF', 'DOCX', 'IMG', 'MP3', 'MP4', 'WAV'].map(f => (
                                             <span key={f} className="legal-format-tag">{f}</span>
@@ -217,11 +219,11 @@ const LegalAnalyzer = ({ onClose }) => {
 
                             {(activeTab === 'link' || activeTab === 'youtube') && (
                                 <div style={{ padding: '40px 0' }}>
-                                    <h3>{activeTab === 'youtube' ? 'Analyze YouTube Video' : 'Analyze Web Page'}</h3>
+                                    <h3>{activeTab === 'youtube' ? t('analyzeYoutube') : t('analyzeUrl')}</h3>
                                     <p style={{ color: '#64748b' }}>
                                         {activeTab === 'youtube'
-                                            ? 'Paste a YouTube URL to analyze its transcript/captions.'
-                                            : 'Paste a website URL to extract and analyze its content.'}
+                                            ? t('pasteYoutube')
+                                            : t('pasteUrl')}
                                     </p>
                                     <div className="legal-url-input-container">
                                         <input
@@ -236,7 +238,7 @@ const LegalAnalyzer = ({ onClose }) => {
                                             disabled={!urlInput.trim()}
                                             onClick={handleUrlAnalysis}
                                         >
-                                            Analyze
+                                            {t('analyzeBtn')}
                                         </button>
                                     </div>
                                 </div>
@@ -248,11 +250,11 @@ const LegalAnalyzer = ({ onClose }) => {
                     {state === 'loading' && (
                         <div className="legal-loading">
                             <div className="legal-loading-spinner" />
-                            <h3>Analyzing "{selectedFile?.name}"</h3>
-                            <p>Our AI is reviewing the document for issues, risks, and conflicts...</p>
+                            <h3>{t('analyzing')} "{selectedFile?.name}"</h3>
+                            <p>{t('analyzingDesc')}</p>
                             <div className="legal-loading-steps">
-                                {['Extracting Text', 'Identifying Issues', 'Assessing Risks', 'Generating Report'].map((step, i) => (
-                                    <span key={step} className={`legal-loading-step ${loadingStep >= i ? 'active' : ''}`}>
+                                {[t('stepExtract'), t('stepIssues'), t('stepRisks'), t('stepReport')].map((step, i) => (
+                                    <span key={i} className={`legal-loading-step ${loadingStep >= i ? 'active' : ''}`}>
                                         {loadingStep > i ? '✅' : loadingStep === i ? '⏳' : '⬜'} {step}
                                     </span>
                                 ))}
@@ -264,9 +266,9 @@ const LegalAnalyzer = ({ onClose }) => {
                     {state === 'error' && (
                         <div className="legal-error">
                             <div className="legal-error-icon">❌</div>
-                            <h3>Analysis Failed</h3>
+                            <h3>{t('analysisFailed')}</h3>
                             <p>{error}</p>
-                            <button className="legal-retry-btn" onClick={resetAnalyzer}>Try Again</button>
+                            <button className="legal-retry-btn" onClick={resetAnalyzer}>{t('tryAgain')}</button>
                         </div>
                     )}
 
@@ -277,11 +279,11 @@ const LegalAnalyzer = ({ onClose }) => {
                             {/* Row 1: Risk Gauge + Summary */}
                             <div className="legal-top-row">
                                 <div className="legal-card">
-                                    <div className="legal-card-title">🎯 Overall Risk</div>
+                                    <div className="legal-card-title">🎯 {t('overallRisk')}</div>
                                     <RiskGauge score={analysis.risk_score || 0} />
                                 </div>
                                 <div className="legal-card">
-                                    <div className="legal-card-title">📋 Document Summary</div>
+                                    <div className="legal-card-title">📋 {t('docSummary')}</div>
                                     <p className="legal-summary-text">{analysis.summary}</p>
                                     {analysis.entities?.length > 0 && (
                                         <div className="legal-entities-bar">
@@ -298,7 +300,7 @@ const LegalAnalyzer = ({ onClose }) => {
                             {/* NEW: Critical Findings */}
                             {analysis.critical_findings?.length > 0 && (
                                 <div className="legal-card legal-critical-card">
-                                    <div className="legal-card-title">⚡ Critical Findings ({analysis.critical_findings.length})</div>
+                                    <div className="legal-card-title">⚡ {t('criticalFindings')} ({analysis.critical_findings.length})</div>
                                     <div className="legal-critical-grid">
                                         {analysis.critical_findings.map((cf) => (
                                             <div key={cf.id} className={`legal-critical-item severity-${cf.severity}`}>
@@ -318,11 +320,17 @@ const LegalAnalyzer = ({ onClose }) => {
                             {/* Row 2: Risk Breakdown */}
                             {analysis.risk_breakdown && (
                                 <div className="legal-card">
-                                    <div className="legal-card-title">📊 Risk Breakdown by Category</div>
+                                    <div className="legal-card-title">📊 {t('riskBreakdown')}</div>
                                     <div className="legal-breakdown-grid">
-                                        {Object.entries(analysis.risk_breakdown).map(([key, val]) => (
-                                            <div key={key} className="legal-breakdown-item">
-                                                <span className="legal-breakdown-label">{key}</span>
+                                        {Object.entries(analysis.risk_breakdown).map(([key, val]) => {
+                                            const categoryMap = {
+                                                Financial: t('riskCatFinancial'), Legal: t('riskCatLegal'),
+                                                Compliance: t('riskCatCompliance'), Operational: t('riskCatOperational'),
+                                                'நிதி': t('riskCatFinancial'), 'சட்டம்': t('riskCatLegal'),
+                                                'இணக்கம்': t('riskCatCompliance'), 'செயல்பாட்டு': t('riskCatOperational')
+                                            };
+                                            return (<div key={key} className="legal-breakdown-item">
+                                                <span className="legal-breakdown-label">{categoryMap[key] || key}</span>
                                                 <div className="legal-breakdown-bar-bg">
                                                     <div
                                                         className="legal-breakdown-bar-fill"
@@ -330,8 +338,8 @@ const LegalAnalyzer = ({ onClose }) => {
                                                     />
                                                 </div>
                                                 <span className="legal-breakdown-value">{val}%</span>
-                                            </div>
-                                        ))}
+                                            </div>);
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -341,7 +349,7 @@ const LegalAnalyzer = ({ onClose }) => {
                                 {/* Issues */}
                                 <div className="legal-card">
                                     <div className="legal-card-title">
-                                        🔍 Issues Found ({analysis.issues?.length || 0})
+                                        🔍 {t('issuesFound')} ({analysis.issues?.length || 0})
                                     </div>
                                     {analysis.issues?.length > 0 ? (
                                         <div className="legal-issues-list">
@@ -368,7 +376,7 @@ const LegalAnalyzer = ({ onClose }) => {
                                     ) : (
                                         <div className="legal-empty-state">
                                             <span>✅</span>
-                                            No significant issues found
+                                            {t('noIssues')}
                                         </div>
                                     )}
                                 </div>
@@ -376,7 +384,7 @@ const LegalAnalyzer = ({ onClose }) => {
                                 {/* Actions */}
                                 <div className="legal-card">
                                     <div className="legal-card-title">
-                                        ✅ Recommended Actions ({analysis.actions?.length || 0})
+                                        ✅ {t('recActions')} ({analysis.actions?.length || 0})
                                     </div>
                                     {analysis.actions?.length > 0 ? (
                                         <div className="legal-actions-list">
@@ -395,7 +403,7 @@ const LegalAnalyzer = ({ onClose }) => {
                                     ) : (
                                         <div className="legal-empty-state">
                                             <span>👍</span>
-                                            No actions required
+                                            {t('noActions')}
                                         </div>
                                     )}
                                 </div>
@@ -404,7 +412,7 @@ const LegalAnalyzer = ({ onClose }) => {
                             {/* NEW: Key Clauses */}
                             {analysis.key_clauses?.length > 0 && (
                                 <div className="legal-card">
-                                    <div className="legal-card-title">📑 Key Clauses Explained ({analysis.key_clauses.length})</div>
+                                    <div className="legal-card-title">📑 {t('keyClauses')} ({analysis.key_clauses.length})</div>
                                     <div className="legal-clauses-list">
                                         {analysis.key_clauses.map((clause) => (
                                             <div key={clause.id} className={`legal-clause-item risk-${clause.risk_level}`}>
@@ -418,7 +426,7 @@ const LegalAnalyzer = ({ onClose }) => {
                                                     <div className="legal-clause-quote">"{clause.original_text}"</div>
                                                 )}
                                                 <div className="legal-clause-plain">
-                                                    <strong>In plain English:</strong> {clause.plain_english}
+                                                    <strong>{t('inPlainEnglish')}</strong> {clause.plain_english}
                                                 </div>
                                                 {clause.notes && (
                                                     <div className="legal-clause-notes">⚠️ {clause.notes}</div>
@@ -432,7 +440,7 @@ const LegalAnalyzer = ({ onClose }) => {
                             {/* NEW: Financial & Cost Issues */}
                             {analysis.financial_issues?.length > 0 && (
                                 <div className="legal-card">
-                                    <div className="legal-card-title">💰 Financial & Cost Issues ({analysis.financial_issues.length})</div>
+                                    <div className="legal-card-title">💰 {t('financialIssues')} ({analysis.financial_issues.length})</div>
                                     <div className="legal-financial-list">
                                         {analysis.financial_issues.map((fi) => (
                                             <div key={fi.id} className={`legal-financial-item risk-${fi.risk_level}`}>
@@ -452,7 +460,7 @@ const LegalAnalyzer = ({ onClose }) => {
                             {/* Row 4: Conflicts */}
                             <div className="legal-card">
                                 <div className="legal-card-title">
-                                    ⚠️ Conflicts & Contradictions ({analysis.conflicts?.length || 0})
+                                    ⚠️ {t('conflicts')} ({analysis.conflicts?.length || 0})
                                 </div>
                                 {analysis.conflicts?.length > 0 ? (
                                     <div className="legal-conflicts-list">
@@ -475,7 +483,7 @@ const LegalAnalyzer = ({ onClose }) => {
                                 ) : (
                                     <div className="legal-empty-state">
                                         <span>✅</span>
-                                        No conflicts detected between document sections
+                                        {t('noConflicts')}
                                     </div>
                                 )}
                             </div>
@@ -483,7 +491,7 @@ const LegalAnalyzer = ({ onClose }) => {
                             {/* NEW: Spelling & Grammar */}
                             {analysis.spelling_grammar_issues?.length > 0 && (
                                 <div className="legal-card">
-                                    <div className="legal-card-title">✏️ Spelling & Grammar ({analysis.spelling_grammar_issues.length})</div>
+                                    <div className="legal-card-title">✏️ {t('spellingGrammar')} ({analysis.spelling_grammar_issues.length})</div>
                                     <div className="legal-spelling-list">
                                         {analysis.spelling_grammar_issues.map((sg) => (
                                             <div key={sg.id} className="legal-spelling-item">

@@ -99,6 +99,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
+import { LanguageProvider } from './contexts/LanguageContext';
+
 // Pages & Components
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage.jsx';
@@ -156,7 +158,9 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <LanguageProvider>
+          <AppContent />
+        </LanguageProvider>
       </AuthProvider>
     </Router>
   );
