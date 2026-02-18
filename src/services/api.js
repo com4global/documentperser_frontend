@@ -406,6 +406,53 @@ export const apiService = {
     return handleResponse(response);
   },
 
+  // ---- HeyGen AI Video ----
+  generateVideo: async (topic, docName = '', language = 'en') => {
+    const formData = new FormData();
+    formData.append('topic', topic);
+    formData.append('doc_name', docName);
+    formData.append('language', language);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/generate-video`, {
+      method: 'POST', body: formData, headers
+    });
+    return handleResponse(response);
+  },
+
+  checkVideoStatus: async (videoId, topic = '', docName = '') => {
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    let url = `${API_URL}/api/edtech/video-status?video_id=${encodeURIComponent(videoId)}`;
+    if (topic) url += `&topic=${encodeURIComponent(topic)}`;
+    if (docName) url += `&doc_name=${encodeURIComponent(docName)}`;
+    const response = await fetch(url, { headers });
+    return handleResponse(response);
+  },
+
+  checkVideoCache: async (topic, docName = '') => {
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    let url = `${API_URL}/api/edtech/video-cache?topic=${encodeURIComponent(topic)}`;
+    if (docName) url += `&doc_name=${encodeURIComponent(docName)}`;
+    const response = await fetch(url, { headers });
+    return handleResponse(response);
+  },
+
+  generateTTSVideo: async (topic, docName = '', language = 'en', voice = 'nova') => {
+    const formData = new FormData();
+    formData.append('topic', topic);
+    formData.append('doc_name', docName);
+    formData.append('language', language);
+    formData.append('voice', voice);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/generate-tts-video`, {
+      method: 'POST', body: formData, headers
+    });
+    return handleResponse(response);
+  },
+
   // Auth (Legacy/Supabase wrapper if needed, but we use Supabase client directly in Context)
 };
 

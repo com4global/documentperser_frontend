@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import apiService from '../services/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import { APP_CONFIG } from '../utils/constants';
 import '../Styles/AITeacher.css';
 
 const AITeacher = ({ onClose }) => {
     const { t, language } = useLanguage();
-    const [view, setView] = useState('documents'); // documents | chapters | topics | loading | lesson
+    const [view, setView] = useState('documents'); // documents | chapters | topics | mode-select | loading | lesson | video-loading | video
     const [documents, setDocuments] = useState([]);
     const [selectedDoc, setSelectedDoc] = useState('');
     const [chapters, setChapters] = useState([]);
@@ -19,14 +20,35 @@ const AITeacher = ({ onClose }) => {
     const [error, setError] = useState('');
     const [visibleBubbles, setVisibleBubbles] = useState(0);
 
-    // Quiz state
-    const [quizAnswer, setQuizAnswer] = useState(null);
-    const [showExplanation, setShowExplanation] = useState(false);
+    // Quiz state (per-question tracking)
+    const [quizAnswers, setQuizAnswers] = useState({});
+    const [showExplanations, setShowExplanations] = useState({});
+
+    // Fullscreen state
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Q&A state
     const [qaQuestion, setQaQuestion] = useState('');
     const [qaAnswer, setQaAnswer] = useState('');
     const [qaLoading, setQaLoading] = useState(false);
+
+    // Video state
+    const [videoStatus, setVideoStatus] = useState(null);
+    const [videoUrl, setVideoUrl] = useState('');
+    const [videoId, setVideoId] = useState('');
+    const [videoError, setVideoError] = useState('');
+    const [cachedVideoUrl, setCachedVideoUrl] = useState('');
+    const videoPollingRef = useRef(null);
+
+    // TTS Avatar state
+    const [ttsSentences, setTtsSentences] = useState([]);
+    const [ttsAudioUrl, setTtsAudioUrl] = useState('');
+    const [ttsScript, setTtsScript] = useState('');
+    const [currentSentenceIdx, setCurrentSentenceIdx] = useState(0);
+    const [isTtsPlaying, setIsTtsPlaying] = useState(false);
+    const audioRef = useRef(null);
+    const sentenceTimerRef = useRef(null);
+    const dialogueAudioRef = useRef(null);
 
     const dialogueEndRef = useRef(null);
 
@@ -35,17 +57,23 @@ const AITeacher = ({ onClose }) => {
         loadDocuments();
     }, []);
 
-    // Animate dialogue bubbles
+    // Animate dialogue bubbles + auto-play audio per bubble
     useEffect(() => {
         if (view === 'lesson' && lesson?.dialogue) {
             setVisibleBubbles(0);
             const total = lesson.dialogue.length;
+            const audioUrls = lesson.audio_urls || [];
             let count = 0;
             const timer = setInterval(() => {
                 count++;
                 setVisibleBubbles(count);
+                // Auto-play audio for the newly visible bubble
+                const audioUrl = audioUrls[count - 1];
+                if (audioUrl) {
+                    playDialogueAudio(audioUrl);
+                }
                 if (count >= total) clearInterval(timer);
-            }, 600);
+            }, 2500); // Slower interval to allow audio to play
             return () => clearInterval(timer);
         }
     }, [view, lesson]);
@@ -56,6 +84,14 @@ const AITeacher = ({ onClose }) => {
             dialogueEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }, [visibleBubbles]);
+
+    // Cleanup video polling and TTS timer on unmount
+    useEffect(() => {
+        return () => {
+            if (videoPollingRef.current) clearInterval(videoPollingRef.current);
+            if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
+        };
+    }, []);
 
     const loadDocuments = async () => {
         setLoadingDocs(true);
@@ -119,11 +155,28 @@ const AITeacher = ({ onClose }) => {
         setLoadingTopics(false);
     };
 
-    const generateLesson = async (topicTitle) => {
+    // Select a topic → show mode selection (Conversation vs Video)
+    const selectTopic = async (topicTitle) => {
         setSelectedTopic(topicTitle);
+        setView('mode-select');
+        setVideoError('');
+        setCachedVideoUrl('');
+
+        // Check if a cached video exists for this topic
+        try {
+            const cacheResult = await apiService.checkVideoCache(topicTitle, selectedDoc);
+            if (cacheResult.has_video && cacheResult.video_url) {
+                setCachedVideoUrl(cacheResult.video_url);
+            }
+        } catch (err) {
+            console.log('Video cache check skipped:', err.message);
+        }
+    };
+
+    const generateLesson = async (topicTitle) => {
         setView('loading');
-        setQuizAnswer(null);
-        setShowExplanation(false);
+        setQuizAnswers({});
+        setShowExplanations({});
         setQaAnswer('');
 
         try {
@@ -133,19 +186,123 @@ const AITeacher = ({ onClose }) => {
                 setView('lesson');
             } else {
                 alert(result.detail || 'Failed to generate lesson');
-                setView('topics');
+                setView('mode-select');
             }
         } catch (err) {
             console.error('Lesson generation failed:', err);
             alert('Failed to generate lesson. Please try again.');
-            setView('topics');
+            setView('mode-select');
         }
     };
 
-    const handleQuizAnswer = (optionIndex) => {
-        if (quizAnswer !== null) return;
-        setQuizAnswer(optionIndex);
-        setShowExplanation(true);
+    // Start TTS video generation (replaces HeyGen for default)
+    const startVideoGeneration = async () => {
+        setView('video-loading');
+        setVideoStatus('generating');
+        setVideoError('');
+        setTtsSentences([]);
+        setTtsAudioUrl('');
+        setTtsScript('');
+        setCurrentSentenceIdx(0);
+        setIsTtsPlaying(false);
+
+        try {
+            const result = await apiService.generateTTSVideo(selectedTopic, selectedDoc, language);
+
+            if (result.success && result.status === 'completed') {
+                setTtsSentences(result.sentences || []);
+                setTtsScript(result.script || '');
+                const audioUrl = `${APP_CONFIG.API_URL}${result.audio_url}`;
+                setTtsAudioUrl(audioUrl);
+                setVideoStatus('completed');
+                setView('tts-video');
+            } else {
+                setVideoStatus('failed');
+                setVideoError(result.error || 'TTS generation failed');
+            }
+        } catch (err) {
+            console.error('TTS video generation failed:', err);
+            setVideoStatus('failed');
+            setVideoError(err.message || 'TTS video generation failed');
+        }
+    };
+
+    // TTS playback controls
+    const handleTtsPlay = () => {
+        if (audioRef.current) {
+            audioRef.current.play();
+            setIsTtsPlaying(true);
+            startSentenceSync();
+        }
+    };
+
+    const handleTtsPause = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            setIsTtsPlaying(false);
+            if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
+        }
+    };
+
+    const handleTtsRestart = () => {
+        if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            setCurrentSentenceIdx(0);
+            audioRef.current.play();
+            setIsTtsPlaying(true);
+            startSentenceSync();
+        }
+    };
+
+    // Sync subtitles with audio playback
+    const startSentenceSync = () => {
+        if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
+        if (!audioRef.current || ttsSentences.length === 0) return;
+
+        const audio = audioRef.current;
+
+        sentenceTimerRef.current = setInterval(() => {
+            if (!audio.duration || audio.paused) return;
+            const progress = audio.currentTime / audio.duration;
+            const sentenceIdx = Math.min(
+                Math.floor(progress * ttsSentences.length),
+                ttsSentences.length - 1
+            );
+            setCurrentSentenceIdx(sentenceIdx);
+        }, 300);
+    };
+
+    // Poll HeyGen for video completion (every 15 seconds) — kept for HeyGen fallback
+    const startVideoPolling = (vId) => {
+        if (videoPollingRef.current) clearInterval(videoPollingRef.current);
+
+        videoPollingRef.current = setInterval(async () => {
+            try {
+                const status = await apiService.checkVideoStatus(vId, selectedTopic, selectedDoc);
+
+                if (status.status === 'completed' && status.video_url) {
+                    clearInterval(videoPollingRef.current);
+                    videoPollingRef.current = null;
+                    setVideoUrl(status.video_url);
+                    setVideoStatus('completed');
+                    setView('video');
+                } else if (status.status === 'failed') {
+                    clearInterval(videoPollingRef.current);
+                    videoPollingRef.current = null;
+                    setVideoStatus('failed');
+                    setVideoError(status.error || 'Video generation failed');
+                }
+                // else still processing — keep polling
+            } catch (err) {
+                console.error('Video polling error:', err);
+            }
+        }, 15000); // Poll every 15 seconds
+    };
+
+    const handleQuizAnswer = (quizIndex, optionIndex) => {
+        if (quizAnswers[quizIndex] !== undefined) return;
+        setQuizAnswers(prev => ({ ...prev, [quizIndex]: optionIndex }));
+        setShowExplanations(prev => ({ ...prev, [quizIndex]: true }));
     };
 
     const handleAskQuestion = async () => {
@@ -163,6 +320,36 @@ const AITeacher = ({ onClose }) => {
             setQaAnswer('Sorry, I could not find an answer. Please try rephrasing your question.');
         }
         setQaLoading(false);
+    };
+
+    // ── Dialogue audio playback ──
+    const playDialogueAudio = (audioUrl) => {
+        if (dialogueAudioRef.current) {
+            dialogueAudioRef.current.pause();
+        }
+        const audio = new Audio(`${APP_CONFIG.API_URL}${audioUrl}`);
+        dialogueAudioRef.current = audio;
+        audio.play().catch(err => console.log('Audio autoplay blocked:', err.message));
+    };
+
+    // ── TTS Video avatar theme (varies per topic) ──
+    const AVATAR_THEMES = [
+        { className: 'theme-purple', label: '👩‍🏫 AI Teacher' },
+        { className: 'theme-blue', label: '🧑‍🔬 Professor Bot' },
+        { className: 'theme-green', label: '🌟 Study Buddy' },
+        { className: 'theme-orange', label: '🎯 Mentor AI' },
+        { className: 'theme-pink', label: '✨ Guide' },
+        { className: 'theme-teal', label: '🔭 Explorer' },
+    ];
+
+    const getAvatarTheme = () => {
+        if (!selectedTopic) return AVATAR_THEMES[0];
+        let hash = 0;
+        for (let i = 0; i < selectedTopic.length; i++) {
+            hash = ((hash << 5) - hash) + selectedTopic.charCodeAt(i);
+            hash |= 0;
+        }
+        return AVATAR_THEMES[Math.abs(hash) % AVATAR_THEMES.length];
     };
 
     const getTeacherIndex = (speakerName) => {
@@ -188,7 +375,7 @@ const AITeacher = ({ onClose }) => {
 
     return (
         <div className="ai-teacher-overlay" onClick={onClose}>
-            <div className="ai-teacher-modal" onClick={(e) => e.stopPropagation()}>
+            <div className={`ai-teacher-modal ${isFullscreen ? 'ai-teacher-fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
                 <div className="ai-teacher-header">
@@ -199,7 +386,16 @@ const AITeacher = ({ onClose }) => {
                             <p>{t('aiTeacherSubtitle') || 'Interactive Learning from Your Documents'}</p>
                         </div>
                     </div>
-                    <button className="ai-teacher-close" onClick={onClose}>✕</button>
+                    <div className="ai-teacher-header-actions">
+                        <button
+                            className="ai-teacher-fullscreen-btn"
+                            onClick={() => setIsFullscreen(prev => !prev)}
+                            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                        >
+                            {isFullscreen ? '⊡' : '⊞'}
+                        </button>
+                        <button className="ai-teacher-close" onClick={onClose}>✕</button>
+                    </div>
                 </div>
 
                 <div className="ai-teacher-content">
@@ -375,7 +571,7 @@ const AITeacher = ({ onClose }) => {
                                         <div
                                             key={idx}
                                             className="ai-teacher-topic-card"
-                                            onClick={() => generateLesson(topic.title)}
+                                            onClick={() => selectTopic(topic.title)}
                                         >
                                             <div className="ai-teacher-topic-title">{topic.title}</div>
                                             <div className="ai-teacher-topic-desc">{topic.description}</div>
@@ -398,20 +594,231 @@ const AITeacher = ({ onClose }) => {
                         </div>
                     )}
 
-                    {/* ===== LOADING VIEW ===== */}
+                    {/* ===== MODE SELECTION VIEW ===== */}
+                    {view === 'mode-select' && (
+                        <div>
+                            <button className="ai-teacher-back-btn" onClick={() => setView('topics')}>
+                                ← {t('backToTopics') || 'Back to Topics'}
+                            </button>
+                            <div className="ai-teacher-topics-title">
+                                🎯 {t('chooseLearningMode') || 'Choose Learning Mode'}
+                            </div>
+                            <p className="ai-teacher-topics-subtitle">
+                                {selectedTopic}
+                            </p>
+
+                            <div className="ai-teacher-mode-grid">
+                                {/* Option 1: Interactive Conversation */}
+                                <div
+                                    className="ai-teacher-mode-card"
+                                    onClick={() => generateLesson(selectedTopic)}
+                                >
+                                    <div className="ai-teacher-mode-icon">🎙️</div>
+                                    <div className="ai-teacher-mode-info">
+                                        <div className="ai-teacher-mode-title">
+                                            {t('interactiveConversation') || 'Interactive Conversation'}
+                                        </div>
+                                        <div className="ai-teacher-mode-desc">
+                                            {t('conversationDesc') || 'Two AI teachers discuss the topic in an engaging dialogue with quiz and Q&A'}
+                                        </div>
+                                    </div>
+                                    <div className="ai-teacher-doc-arrow">→</div>
+                                </div>
+
+                                {/* Option 2: Interactive Video */}
+                                <div
+                                    className="ai-teacher-mode-card ai-teacher-mode-video"
+                                    onClick={startVideoGeneration}
+                                >
+                                    <div className="ai-teacher-mode-icon">🎬</div>
+                                    <div className="ai-teacher-mode-info">
+                                        <div className="ai-teacher-mode-title">
+                                            {t('interactiveVideo') || 'Interactive Video'}
+                                            {cachedVideoUrl && (
+                                                <span className="ai-teacher-cached-badge">✅ Ready</span>
+                                            )}
+                                        </div>
+                                        <div className="ai-teacher-mode-desc">
+                                            {cachedVideoUrl
+                                                ? (t('videoReadyDesc') || 'AI-generated teaching video is ready to play!')
+                                                : (t('videoDesc') || 'AI avatar explains the topic in a professional teaching video (2-5 min to generate)')}
+                                        </div>
+                                    </div>
+                                    <div className="ai-teacher-doc-arrow">→</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== LOADING VIEW (Conversation) ===== */}
                     {view === 'loading' && (
                         <div className="ai-teacher-loading">
                             <div className="ai-teacher-loading-spinner"></div>
-                            <h3>🎬 {t('generatingLesson') || 'Generating AI Lesson...'}</h3>
+                            <h3>🎙️ {t('generatingLesson') || 'Generating AI Lesson...'}</h3>
                             <p>{t('creatingDialogue') || 'Creating an engaging dialogue between AI teachers'}</p>
                         </div>
                     )}
 
-                    {/* ===== STEP 3: LESSON VIEW ===== */}
+                    {/* ===== VIDEO LOADING VIEW ===== */}
+                    {view === 'video-loading' && (
+                        <div className="ai-teacher-loading">
+                            <button className="ai-teacher-back-btn" onClick={() => {
+                                if (videoPollingRef.current) clearInterval(videoPollingRef.current);
+                                setView('mode-select');
+                            }}>
+                                ← {t('backToModes') || 'Back'}
+                            </button>
+                            {videoStatus === 'failed' ? (
+                                <>
+                                    <div className="ai-teacher-empty-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+                                    <h3 style={{ color: '#f87171' }}>{t('videoFailed') || 'Video Generation Failed'}</h3>
+                                    <p style={{ color: '#94a3b8', marginBottom: '16px' }}>{videoError}</p>
+                                    <button className="ai-teacher-qa-btn" onClick={startVideoGeneration}>
+                                        🔄 {t('retry') || 'Try Again'}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="ai-teacher-loading-spinner"></div>
+                                    <h3>🎬 {t('generatingScript') || 'Generating AI Teaching Video...'}</h3>
+                                    <p>{t('ttsWait') || 'Creating script and generating audio... (5-10 seconds)'}</p>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ===== TTS AVATAR VIDEO PLAYER ===== */}
+                    {view === 'tts-video' && ttsAudioUrl && (
+                        <div className="ai-teacher-lesson">
+                            <button className="ai-teacher-back-btn" onClick={() => {
+                                handleTtsPause();
+                                setView('mode-select');
+                            }}>
+                                ← {t('backToModes') || 'Back to Learning Modes'}
+                            </button>
+
+                            <div className="ai-teacher-lesson-title">
+                                🎬 {selectedTopic}
+                            </div>
+
+                            {/* Avatar + Subtitle Container */}
+                            <div className={`tts-avatar-stage ${getAvatarTheme().className}`}>
+                                {/* Animated Avatar */}
+                                <div className={`tts-avatar ${isTtsPlaying ? 'speaking' : ''}`}>
+                                    <div className="tts-avatar-body">
+                                        <div className="tts-avatar-head">
+                                            <div className="tts-avatar-face">
+                                                <div className="tts-avatar-eyes">
+                                                    <div className="tts-avatar-eye left"></div>
+                                                    <div className="tts-avatar-eye right"></div>
+                                                </div>
+                                                <div className={`tts-avatar-mouth ${isTtsPlaying ? 'talking' : ''}`}></div>
+                                            </div>
+                                        </div>
+                                        <div className="tts-avatar-torso"></div>
+                                    </div>
+                                    <div className="tts-avatar-label">👩‍🏫 AI Teacher</div>
+                                </div>
+
+                                {/* Subtitle Display */}
+                                <div className="tts-subtitle-card">
+                                    <div className="tts-subtitle-text">
+                                        {ttsSentences[currentSentenceIdx] || '...'}
+                                    </div>
+                                    <div className="tts-subtitle-counter">
+                                        {currentSentenceIdx + 1} / {ttsSentences.length}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Hidden audio element */}
+                            <audio
+                                ref={audioRef}
+                                src={ttsAudioUrl}
+                                onEnded={() => {
+                                    setIsTtsPlaying(false);
+                                    if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
+                                    setCurrentSentenceIdx(ttsSentences.length - 1);
+                                }}
+                                onPlay={() => { setIsTtsPlaying(true); startSentenceSync(); }}
+                                onPause={() => { setIsTtsPlaying(false); }}
+                            />
+
+                            {/* Playback Controls */}
+                            <div className="tts-controls">
+                                <button className="tts-control-btn" onClick={handleTtsRestart} title="Restart">
+                                    ⏮️
+                                </button>
+                                {isTtsPlaying ? (
+                                    <button className="tts-control-btn tts-play-btn" onClick={handleTtsPause} title="Pause">
+                                        ⏸️
+                                    </button>
+                                ) : (
+                                    <button className="tts-control-btn tts-play-btn" onClick={handleTtsPlay} title="Play">
+                                        ▶️
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Full script toggle */}
+                            <details className="tts-script-details">
+                                <summary>📝 View Full Script</summary>
+                                <div className="tts-script-text">{ttsScript}</div>
+                            </details>
+
+                            <div className="ai-teacher-video-actions">
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    onClick={() => generateLesson(selectedTopic)}
+                                >
+                                    🎙️ {t('alsoViewConversation') || 'Also View as Conversation'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== VIDEO PLAYER VIEW (HeyGen fallback) ===== */}
+                    {view === 'video' && videoUrl && (
+                        <div className="ai-teacher-lesson">
+                            <button className="ai-teacher-back-btn" onClick={() => setView('mode-select')}>
+                                ← {t('backToModes') || 'Back to Learning Modes'}
+                            </button>
+
+                            <div className="ai-teacher-lesson-title">
+                                🎬 {selectedTopic}
+                            </div>
+                            <div className="ai-teacher-lesson-source">
+                                📄 {t('sourceDoc') || 'Source'}: {selectedDoc}
+                            </div>
+
+                            <div className="ai-teacher-video-container">
+                                <video
+                                    className="ai-teacher-video-player"
+                                    src={videoUrl}
+                                    controls
+                                    autoPlay
+                                    playsInline
+                                >
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+
+                            <div className="ai-teacher-video-actions">
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    onClick={() => generateLesson(selectedTopic)}
+                                >
+                                    🎙️ {t('alsoViewConversation') || 'Also View as Conversation'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== LESSON VIEW ===== */}
                     {view === 'lesson' && lesson && (
                         <div className="ai-teacher-lesson">
-                            <button className="ai-teacher-back-btn" onClick={() => setView('topics')}>
-                                ← {t('backToTopics') || 'Back to Topics'}
+                            <button className="ai-teacher-back-btn" onClick={() => setView('mode-select')}>
+                                ← {t('backToModes') || 'Back to Learning Modes'}
                             </button>
 
                             <div className="ai-teacher-lesson-title">
@@ -446,7 +853,18 @@ const AITeacher = ({ onClose }) => {
                                                 {getTeacherEmoji(msg.speaker)}
                                             </div>
                                             <div className="ai-teacher-bubble-content">
-                                                <div className="ai-teacher-bubble-name">{msg.speaker}</div>
+                                                <div className="ai-teacher-bubble-name">
+                                                    {msg.speaker}
+                                                    {lesson.audio_urls?.[idx] && (
+                                                        <button
+                                                            className="ai-teacher-bubble-speaker-btn"
+                                                            onClick={() => playDialogueAudio(lesson.audio_urls[idx])}
+                                                            title="Replay audio"
+                                                        >
+                                                            🔊
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 {msg.type && (
                                                     <span className={`ai-teacher-bubble-type ${msg.type}`}>
                                                         {msg.type === 'aha_moment' ? '💡 Aha!' : msg.type}
@@ -478,39 +896,45 @@ const AITeacher = ({ onClose }) => {
                                         </div>
                                     )}
 
-                                    {/* Quiz */}
+                                    {/* Quiz — supports both array (new) and single object (legacy) */}
                                     {lesson.quiz && (
                                         <div className="ai-teacher-quiz">
                                             <div className="ai-teacher-quiz-title">
                                                 🧠 {t('quickQuiz') || 'Quick Quiz'}
                                             </div>
-                                            <div className="ai-teacher-quiz-question">{lesson.quiz.question}</div>
-                                            <div className="ai-teacher-quiz-options">
-                                                {lesson.quiz.options?.map((option, idx) => {
-                                                    let className = 'ai-teacher-quiz-option';
-                                                    if (quizAnswer !== null) {
-                                                        className += ' disabled';
-                                                        if (idx === lesson.quiz.correct) className += ' correct';
-                                                        else if (idx === quizAnswer) className += ' wrong';
-                                                    }
-                                                    return (
-                                                        <button
-                                                            key={idx}
-                                                            className={className}
-                                                            onClick={() => handleQuizAnswer(idx)}
-                                                            disabled={quizAnswer !== null}
-                                                        >
-                                                            {option}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                            {showExplanation && (
-                                                <div className="ai-teacher-quiz-explanation">
-                                                    {quizAnswer === lesson.quiz.correct ? '🎉 ' : '💡 '}
-                                                    {lesson.quiz.explanation}
+                                            {(Array.isArray(lesson.quiz) ? lesson.quiz : [lesson.quiz]).map((q, qIdx) => (
+                                                <div key={qIdx} className="ai-teacher-quiz-block">
+                                                    <div className="ai-teacher-quiz-question">
+                                                        <span className="ai-teacher-quiz-number">Q{qIdx + 1}.</span> {q.question}
+                                                    </div>
+                                                    <div className="ai-teacher-quiz-options">
+                                                        {q.options?.map((option, idx) => {
+                                                            let className = 'ai-teacher-quiz-option';
+                                                            if (quizAnswers[qIdx] !== undefined) {
+                                                                className += ' disabled';
+                                                                if (idx === q.correct) className += ' correct';
+                                                                else if (idx === quizAnswers[qIdx]) className += ' wrong';
+                                                            }
+                                                            return (
+                                                                <button
+                                                                    key={idx}
+                                                                    className={className}
+                                                                    onClick={() => handleQuizAnswer(qIdx, idx)}
+                                                                    disabled={quizAnswers[qIdx] !== undefined}
+                                                                >
+                                                                    {option}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    {showExplanations[qIdx] && (
+                                                        <div className="ai-teacher-quiz-explanation">
+                                                            {quizAnswers[qIdx] === q.correct ? '🎉 ' : '💡 '}
+                                                            {q.explanation}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+                                            ))}
                                         </div>
                                     )}
 

@@ -19,12 +19,68 @@
     background: #0f172a;
     border-radius: 20px;
     width: 95%;
-    max-width: 900px;
+    max-width: 1200px;
     max-height: 92vh;
     overflow-y: auto;
     box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
     animation: teacherSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     color: #e2e8f0;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Fullscreen mode */
+.ai-teacher-modal.ai-teacher-fullscreen {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+}
+
+/* Header action buttons container */
+.ai-teacher-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-teacher-fullscreen-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    color: #94a3b8;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.ai-teacher-fullscreen-btn:hover {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+}
+
+/* Quiz multi-question block */
+.ai-teacher-quiz-block {
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ai-teacher-quiz-block:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.ai-teacher-quiz-number {
+    font-weight: 700;
+    color: #a78bfa;
+    margin-right: 4px;
 }
 
 @keyframes teacherSlideUp {
@@ -858,6 +914,511 @@
 
 .ai-teacher-modal::-webkit-scrollbar-track {
     background: transparent;
+}
+
+/* ---- Mode Selection Grid ---- */
+.ai-teacher-mode-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.ai-teacher-mode-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(59, 130, 246, 0.06));
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.ai-teacher-mode-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(139, 92, 246, 0.5);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1));
+    box-shadow: 0 8px 30px rgba(139, 92, 246, 0.2);
+}
+
+.ai-teacher-mode-video {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(244, 114, 182, 0.06));
+    border-color: rgba(236, 72, 153, 0.2);
+}
+
+.ai-teacher-mode-video:hover {
+    border-color: rgba(236, 72, 153, 0.5);
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(244, 114, 182, 0.1));
+    box-shadow: 0 8px 30px rgba(236, 72, 153, 0.2);
+}
+
+.ai-teacher-mode-icon {
+    font-size: 40px;
+    flex-shrink: 0;
+}
+
+.ai-teacher-mode-info {
+    flex: 1;
+}
+
+.ai-teacher-mode-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-teacher-mode-desc {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+.ai-teacher-cached-badge {
+    font-size: 0.7rem;
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    padding: 2px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    font-weight: 600;
+}
+
+/* ---- Video Player ---- */
+.ai-teacher-video-container {
+    margin: 20px 0;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ai-teacher-video-player {
+    width: 100%;
+    max-height: 500px;
+    display: block;
+}
+
+.ai-teacher-video-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+/* ---- Video Progress Steps ---- */
+.ai-teacher-video-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 24px;
+    text-align: left;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.ai-teacher-video-progress-step {
+    font-size: 0.9rem;
+    color: #475569;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    transition: all 0.3s;
+}
+
+.ai-teacher-video-progress-step.active {
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.1);
+    border-left: 3px solid #a78bfa;
+}
+
+.ai-teacher-video-progress-step.completed {
+    color: #4ade80;
+}
+
+/* ---- Topics Subtitle ---- */
+.ai-teacher-topics-subtitle {
+    font-size: 0.95rem;
+    color: #a78bfa;
+    margin: 0 0 8px;
+    font-weight: 600;
+}
+
+/* ---- TTS Avatar Stage ---- */
+.tts-avatar-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    margin: 24px 0;
+    padding: 32px 20px;
+    background: linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%);
+    border-radius: 24px;
+    border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+/* Avatar Character */
+.tts-avatar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.tts-avatar.speaking {
+    transform: scale(1.03);
+}
+
+.tts-avatar-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: avatar-breathe 3s ease-in-out infinite;
+}
+
+.tts-avatar-head {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.4);
+    z-index: 1;
+}
+
+.tts-avatar-face {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.tts-avatar-eyes {
+    display: flex;
+    gap: 20px;
+}
+
+.tts-avatar-eye {
+    width: 12px;
+    height: 14px;
+    background: white;
+    border-radius: 50%;
+    position: relative;
+    animation: avatar-blink 4s ease-in-out infinite;
+}
+
+.tts-avatar-eye::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #1e1b4b;
+    border-radius: 50%;
+    top: 4px;
+    left: 3px;
+}
+
+.tts-avatar-mouth {
+    width: 20px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 0 0 12px 12px;
+    transition: all 0.15s ease;
+}
+
+.tts-avatar-mouth.talking {
+    animation: avatar-talk 0.3s ease-in-out infinite alternate;
+}
+
+.tts-avatar-torso {
+    width: 70px;
+    height: 45px;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    border-radius: 0 0 24px 24px;
+    margin-top: -8px;
+    box-shadow: 0 4px 20px rgba(109, 40, 217, 0.3);
+}
+
+.tts-avatar-label {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: #a78bfa;
+    font-weight: 600;
+}
+
+/* Avatar Animations */
+@keyframes avatar-breathe {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+@keyframes avatar-blink {
+
+    0%,
+    45%,
+    55%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    50% {
+        transform: scaleY(0.05);
+    }
+}
+
+@keyframes avatar-talk {
+    0% {
+        height: 5px;
+        width: 18px;
+        border-radius: 0 0 10px 10px;
+    }
+
+    100% {
+        height: 14px;
+        width: 22px;
+        border-radius: 50%;
+    }
+}
+
+/* Subtitle Card */
+.tts-subtitle-card {
+    width: 100%;
+    max-width: 520px;
+    padding: 24px 28px;
+    background: rgba(30, 27, 75, 0.6);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    text-align: center;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+}
+
+.tts-subtitle-text {
+    font-size: 1.05rem;
+    color: #e2e8f0;
+    line-height: 1.7;
+    transition: opacity 0.3s ease;
+}
+
+.tts-subtitle-counter {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Playback Controls */
+.tts-controls {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 16px;
+}
+
+.tts-control-btn {
+    width: 52px;
+    height: 52px;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: rgba(139, 92, 246, 0.1);
+    border-radius: 50%;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.tts-control-btn:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.5);
+    transform: scale(1.1);
+}
+
+.tts-play-btn {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.2));
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
+}
+
+.tts-play-btn:hover {
+    box-shadow: 0 6px 30px rgba(139, 92, 246, 0.35);
+}
+
+/* Script Details Toggle */
+.tts-script-details {
+    margin-top: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.tts-script-details summary {
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.tts-script-details summary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+}
+
+.tts-script-text {
+    padding: 16px 20px;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* ── Dialogue Speaker Button ── */
+.ai-teacher-bubble-speaker-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-left: 6px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.2s, transform 0.15s;
+    vertical-align: middle;
+    opacity: 0.7;
+}
+
+.ai-teacher-bubble-speaker-btn:hover {
+    background: rgba(139, 92, 246, 0.2);
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+.ai-teacher-bubble-name {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* ── TTS Avatar Color Themes ── */
+/* Default / Purple theme */
+.tts-avatar-stage.theme-purple .tts-avatar-head {
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+}
+
+.tts-avatar-stage.theme-purple .tts-avatar-torso {
+    background: linear-gradient(to bottom, #6d28d9, #4c1d95);
+}
+
+/* Blue theme */
+.tts-avatar-stage.theme-blue .tts-avatar-head {
+    background: linear-gradient(135deg, #2563eb, #60a5fa);
+}
+
+.tts-avatar-stage.theme-blue .tts-avatar-torso {
+    background: linear-gradient(to bottom, #1d4ed8, #1e3a8a);
+}
+
+.tts-avatar-stage.theme-blue .tts-avatar-eye::after {
+    background: #60a5fa;
+}
+
+.tts-avatar-stage.theme-blue .tts-avatar-label {
+    color: #60a5fa;
+}
+
+/* Green theme */
+.tts-avatar-stage.theme-green .tts-avatar-head {
+    background: linear-gradient(135deg, #059669, #34d399);
+}
+
+.tts-avatar-stage.theme-green .tts-avatar-torso {
+    background: linear-gradient(to bottom, #047857, #064e3b);
+}
+
+.tts-avatar-stage.theme-green .tts-avatar-eye::after {
+    background: #34d399;
+}
+
+.tts-avatar-stage.theme-green .tts-avatar-label {
+    color: #34d399;
+}
+
+/* Orange theme */
+.tts-avatar-stage.theme-orange .tts-avatar-head {
+    background: linear-gradient(135deg, #ea580c, #fb923c);
+}
+
+.tts-avatar-stage.theme-orange .tts-avatar-torso {
+    background: linear-gradient(to bottom, #c2410c, #7c2d12);
+}
+
+.tts-avatar-stage.theme-orange .tts-avatar-eye::after {
+    background: #fb923c;
+}
+
+.tts-avatar-stage.theme-orange .tts-avatar-label {
+    color: #fb923c;
+}
+
+/* Pink theme */
+.tts-avatar-stage.theme-pink .tts-avatar-head {
+    background: linear-gradient(135deg, #db2777, #f472b6);
+}
+
+.tts-avatar-stage.theme-pink .tts-avatar-torso {
+    background: linear-gradient(to bottom, #be185d, #831843);
+}
+
+.tts-avatar-stage.theme-pink .tts-avatar-eye::after {
+    background: #f472b6;
+}
+
+.tts-avatar-stage.theme-pink .tts-avatar-label {
+    color: #f472b6;
+}
+
+/* Teal theme */
+.tts-avatar-stage.theme-teal .tts-avatar-head {
+    background: linear-gradient(135deg, #0d9488, #2dd4bf);
+}
+
+.tts-avatar-stage.theme-teal .tts-avatar-torso {
+    background: linear-gradient(to bottom, #0f766e, #134e4a);
+}
+
+.tts-avatar-stage.theme-teal .tts-avatar-eye::after {
+    background: #2dd4bf;
+}
+
+.tts-avatar-stage.theme-teal .tts-avatar-label {
+    color: #2dd4bf;
 }
 
 /* ---- Responsive ---- */
