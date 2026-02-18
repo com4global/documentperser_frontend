@@ -35,6 +35,7 @@ const AITeacher = ({ onClose }) => {
     // Video state
     const [videoStatus, setVideoStatus] = useState(null);
     const [videoUrl, setVideoUrl] = useState('');
+    // eslint-disable-next-line no-unused-vars
     const [videoId, setVideoId] = useState('');
     const [videoError, setVideoError] = useState('');
     const [cachedVideoUrl, setCachedVideoUrl] = useState('');
@@ -273,6 +274,7 @@ const AITeacher = ({ onClose }) => {
     };
 
     // Poll HeyGen for video completion (every 15 seconds) — kept for HeyGen fallback
+    // eslint-disable-next-line no-unused-vars
     const startVideoPolling = (vId) => {
         if (videoPollingRef.current) clearInterval(videoPollingRef.current);
 
