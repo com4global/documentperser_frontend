@@ -58,24 +58,44 @@ const AITeacher = ({ onClose }) => {
         loadDocuments();
     }, []);
 
-    // Animate dialogue bubbles + auto-play audio per bubble
+    // Animate dialogue bubbles + auto-play audio sequentially (wait for each to finish)
     useEffect(() => {
         if (view === 'lesson' && lesson?.dialogue) {
             setVisibleBubbles(0);
             const total = lesson.dialogue.length;
             const audioUrls = lesson.audio_urls || [];
-            let count = 0;
-            const timer = setInterval(() => {
-                count++;
-                setVisibleBubbles(count);
-                // Auto-play audio for the newly visible bubble
-                const audioUrl = audioUrls[count - 1];
-                if (audioUrl) {
-                    playDialogueAudio(audioUrl);
+            let cancelled = false;
+
+            const playSequence = async () => {
+                for (let i = 0; i < total; i++) {
+                    if (cancelled) return;
+                    setVisibleBubbles(i + 1);
+
+                    const audioUrl = audioUrls[i];
+                    if (audioUrl) {
+                        // Play audio and wait for it to finish
+                        await new Promise((resolve) => {
+                            if (dialogueAudioRef.current) {
+                                dialogueAudioRef.current.pause();
+                            }
+                            const fullUrl = audioUrl.startsWith('http') ? audioUrl : `${APP_CONFIG.API_URL}${audioUrl}`;
+                            const audio = new Audio(fullUrl);
+                            dialogueAudioRef.current = audio;
+                            audio.onended = resolve;
+                            audio.onerror = resolve; // Move on if audio fails
+                            audio.play().catch(() => resolve());
+                        });
+                        // Small pause between speakers
+                        if (!cancelled) await new Promise(r => setTimeout(r, 600));
+                    } else {
+                        // No audio — use a short delay
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
                 }
-                if (count >= total) clearInterval(timer);
-            }, 2500); // Slower interval to allow audio to play
-            return () => clearInterval(timer);
+            };
+
+            playSequence();
+            return () => { cancelled = true; };
         }
     }, [view, lesson]);
 
@@ -213,7 +233,7 @@ const AITeacher = ({ onClose }) => {
             if (result.success && result.status === 'completed') {
                 setTtsSentences(result.sentences || []);
                 setTtsScript(result.script || '');
-                const audioUrl = `${APP_CONFIG.API_URL}${result.audio_url}`;
+                const audioUrl = result.audio_url.startsWith('http') ? result.audio_url : `${APP_CONFIG.API_URL}${result.audio_url}`;
                 setTtsAudioUrl(audioUrl);
                 setVideoStatus('completed');
                 setView('tts-video');
@@ -329,7 +349,8 @@ const AITeacher = ({ onClose }) => {
         if (dialogueAudioRef.current) {
             dialogueAudioRef.current.pause();
         }
-        const audio = new Audio(`${APP_CONFIG.API_URL}${audioUrl}`);
+        const fullUrl = audioUrl.startsWith('http') ? audioUrl : `${APP_CONFIG.API_URL}${audioUrl}`;
+        const audio = new Audio(fullUrl);
         dialogueAudioRef.current = audio;
         audio.play().catch(err => console.log('Audio autoplay blocked:', err.message));
     };
