@@ -4,7 +4,7 @@ import { isValidYouTubeUrl, validateFileSize } from '../utils/helpers';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../Styles/AdminDashboard.css';
 
-const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processing, supportedFormats, selectedFile, onFileSelect }) => {
+const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploading, processing, supportedFormats, selectedFile, onFileSelect }) => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('document');
   const [urlInput, setUrlInput] = useState('');
@@ -12,6 +12,10 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [urlError, setUrlError] = useState('');
+  const [webUrlInput, setWebUrlInput] = useState('');
+  const [webUrlError, setWebUrlError] = useState('');
+  const [webIngesting, setWebIngesting] = useState(false);
+  const [webIngestResult, setWebIngestResult] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleDrag = (e) => {
@@ -85,6 +89,28 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
     }
   };
 
+  const handleWebUrlSubmit = async () => {
+    if (!webUrlInput.trim()) return;
+    try {
+      new URL(webUrlInput); // validate URL format
+    } catch {
+      setWebUrlError('Please enter a valid URL (e.g. https://example.com)');
+      return;
+    }
+    setWebUrlError('');
+    setWebIngesting(true);
+    setWebIngestResult(null);
+    try {
+      const result = await onIngestUrl(webUrlInput);
+      setWebIngestResult(result);
+      setWebUrlInput('');
+    } catch (err) {
+      setWebUrlError(err.message || 'Failed to extract content from URL');
+    } finally {
+      setWebIngesting(false);
+    }
+  };
+
   return (
     <div className="multimodal-uploader">
       {/* Tab Navigation */}
@@ -105,11 +131,65 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, uploading, processin
           <span className="tab-label">{t('tabMedia')}</span>
           <span className="tab-badge">4 types</span>
         </button>
+        {onIngestUrl && (
+          <button
+            className={`upload-tab ${activeTab === 'weburl' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('weburl'); resetFileInput(); }}
+          >
+            <span className="tab-icon">🌐</span>
+            <span className="tab-label">{t('analyzeUrl') || 'Web URL'}</span>
+            <span className="tab-badge">Any URL</span>
+          </button>
+        )}
       </div>
 
       {/* Upload Content */}
       <div className="upload-content">
-        {activeTab === 'document' ? (
+        {activeTab === 'weburl' ? (
+          <div className="document-upload fade-in">
+            <div className="url-input-section">
+              <label className="input-label">
+                <span className="label-icon">🌐</span>
+                {t('analyzeUrl') || 'Analyze Web Page'}
+              </label>
+              <p style={{ color: '#9ca3af', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                {t('pasteUrl') || 'Paste a website URL to extract and analyze its content.'}
+              </p>
+              <div className="url-input-wrapper">
+                <input
+                  type="text"
+                  className={`url-input ${webUrlError ? 'error' : ''}`}
+                  placeholder="https://example.com/article"
+                  value={webUrlInput}
+                  onChange={(e) => { setWebUrlInput(e.target.value); setWebUrlError(''); setWebIngestResult(null); }}
+                  disabled={webIngesting}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleWebUrlSubmit(); }}
+                />
+                {webUrlInput && (
+                  <button className="url-clear-btn" onClick={() => setWebUrlInput('')} type="button">×</button>
+                )}
+              </div>
+              {webUrlError && <div className="input-error">{webUrlError}</div>}
+              {webIngestResult && (
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', padding: '0.75rem 1rem', marginTop: '0.75rem', color: '#10b981', fontSize: '0.9rem' }}>
+                  ✅ <strong>{webIngestResult.title}</strong> extracted! ({webIngestResult.sections} sections, {Math.round(webIngestResult.text_length / 1024)}KB). Processing in background.
+                </div>
+              )}
+              <button
+                onClick={handleWebUrlSubmit}
+                disabled={!webUrlInput.trim() || webIngesting}
+                className="upload-action-btn primary-btn"
+                style={{ marginTop: '1rem' }}
+              >
+                {webIngesting ? (
+                  <><span className="btn-spinner"></span> Extracting...</>
+                ) : (
+                  <><span className="btn-icon">🚀</span> Extract & Learn</>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : activeTab === 'document' ? (
           <div className="document-upload fade-in">
             {/* Format Chips */}
             <div className="format-chips-container">

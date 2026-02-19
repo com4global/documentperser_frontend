@@ -770,6 +770,16 @@ const AITeacher = ({ onClose }) => {
                     {/* ===== STEP 1: DOCUMENTS VIEW ===== */}
                     {view === 'documents' && (
                         <div>
+                            {/* Individual Learning Mode Badge */}
+                            <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                                background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)',
+                                padding: '0.4rem 1rem', borderRadius: '50px', marginBottom: '1rem',
+                                fontSize: '0.85rem', color: '#10b981', fontWeight: 600
+                            }}>
+                                <span>🧑‍💻</span> Individual Learning Mode — Self-Paced
+                            </div>
+
                             <div className="ai-teacher-topics-title">
                                 📂 {t('selectDocument') || 'Select a Document to Learn From'}
                             </div>

@@ -303,6 +303,12 @@ export default function AdminDashboard() {
           <MultimodalUploader
             onUpload={handleUpload}
             onUploadAndProcess={handleUploadAndProcess}
+            onIngestUrl={async (url) => {
+              const result = await apiService.ingestUrl(url);
+              showNotification(`Web page "${result.title}" extracted! Processing...`, 'success');
+              setTimeout(() => fetchDashboardData(), 2000);
+              return result;
+            }}
             uploading={uploading}
             processing={processing}
             supportedFormats={supportedFormats}

@@ -594,6 +594,16 @@ export const apiService = {
     return handleResponse(response);
   },
 
+  // ---- Web URL Ingestion ----
+  async ingestUrl(url) {
+    const formData = new FormData();
+    formData.append('url', url);
+    const response = await authenticatedFetch('/api/ingest-url', {
+      method: 'POST', body: formData
+    });
+    return handleResponse(response);
+  },
+
   // ---- Batch Processing Status ----
   async getBatchStatus(docName = '', jobId = '') {
     const params = new URLSearchParams();

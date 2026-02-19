@@ -6,9 +6,9 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import '../Styles/AdminDashboard.css';
 
 const DEMO_VIDEOS = [
-  { id: 1, title: 'Platform Overview', url: '/advertiseA.mp4' },
-  { id: 2, title: 'AI Features', url: '/advertiseb.mp4' },
-  { id: 3, title: 'Enterprise Workflow', url: '/advertisec.mp4' }
+  { id: 1, title: 'AI Lesson Demo', url: '/advertiseA.mp4' },
+  { id: 2, title: 'Voice Q&A', url: '/advertiseb.mp4' },
+  { id: 3, title: 'Classroom Mode', url: '/advertisec.mp4' }
 ];
 
 export default function LandingPage() {
@@ -59,32 +59,32 @@ export default function LandingPage() {
   }, [showDemoModal]);
 
   const models = [
-    { id: 'gpt-3', name: 'GPT-3.5 Turbo', price: '$0.002/1K tokens', speed: 'Fast', features: ['Basic reasoning', 'Quick responses', 'Cost-effective', 'Standard accuracy'], color: '#10b981' },
-    { id: 'gpt-4', name: 'GPT-4 Turbo', price: '$0.01/1K tokens', speed: 'Moderate', features: ['Advanced reasoning', 'Higher accuracy', 'Complex tasks', '128K context'], color: '#3b82f6', popular: true },
-    { id: 'claude', name: 'Claude Sonnet 4', price: '$0.015/1K tokens', speed: 'Fast', features: ['Superior reasoning', 'Longest context', 'Best for research', '200K tokens'], color: '#8b5cf6' },
-    { id: 'gemini', name: 'Gemini Pro', price: '$0.00125/1K tokens', speed: 'Very Fast', features: ['Multimodal AI', 'Image & video', 'Lowest cost', 'Google integration'], color: '#f59e0b' }
+    { id: 'individual', name: 'Self-Paced Learning', price: 'Free', speed: 'Instant', features: ['Upload any document', 'AI-generated lessons', 'Voice Q&A', 'Smart quizzes'], color: '#10b981' },
+    { id: 'classroom', name: 'Classroom Mode', price: 'For Schools', speed: 'Real-time', features: ['Teacher dashboard', 'Student progress tracking', 'Assignment management', 'Join via code'], color: '#3b82f6', popular: true },
+    { id: 'web', name: 'Web Content', price: 'Built-in', speed: 'Fast', features: ['Paste any URL', 'Auto-extract text', 'Instant lessons', 'YouTube transcripts'], color: '#8b5cf6' },
+    { id: 'multilingual', name: 'Multi-Language', price: 'Included', speed: 'Real-time', features: ['Tamil & English', 'Voice interaction', 'Localized UI', 'Cross-language Q&A'], color: '#f59e0b' }
   ];
 
   const features = [
-    { icon: '🎯', title: 'Multi-Source RAG', description: 'Upload PDFs, videos, audio, images, YouTube links - we handle it all', demo: 'Process 100+ file types instantly' },
-    { icon: '🚀', title: 'Lightning Fast Search', description: 'Get answers in milliseconds with advanced vector search', demo: 'Query 1M+ documents in <200ms' },
-    { icon: '🧠', title: 'Smart Model Selection', description: 'Choose GPT-4, Claude, or Gemini based on your needs', demo: 'Auto-route to best model' },
-    { icon: '💼', title: 'Enterprise Security', description: 'SOC 2, GDPR compliant with end-to-end encryption', demo: 'Bank-level encryption' },
-    { icon: '📊', title: 'Analytics Dashboard', description: 'Track usage, costs, and performance in real-time', demo: 'Live insights & reporting' },
-    { icon: '🔗', title: 'Seamless Integration', description: 'REST API, webhooks, and SDKs for easy integration', demo: 'Deploy in 5 minutes' }
+    { icon: '🎓', title: 'AI Teacher', description: 'Upload any textbook or document and get interactive AI-generated lessons with two AI tutors', demo: 'Turn PDFs into live lessons' },
+    { icon: '🎙️', title: 'Voice Q&A', description: 'Ask questions by voice during lessons and get instant spoken answers from the AI', demo: 'Hands-free learning' },
+    { icon: '🧠', title: 'Smart Quizzes', description: 'Auto-generated quizzes after each topic to test comprehension and retention', demo: 'Adaptive difficulty' },
+    { icon: '📊', title: 'Progress Tracking', description: 'Track every student\'s learning journey — lessons watched, quizzes scored, topics completed', demo: 'Real-time dashboards' },
+    { icon: '👩‍🏫', title: 'Classroom Management', description: 'Teachers create classrooms, assign topics, and monitor student progress with join codes', demo: 'One code to join' },
+    { icon: '🌐', title: 'Web & Video Content', description: 'Paste any URL or YouTube link — we extract the content and turn it into lessons', demo: 'Learn from the web' }
   ];
 
   const pricingPlans = [
-    { name: 'Starter', price: '$29', period: '/month', description: 'Perfect for individuals', features: ['10K tokens/month', 'All AI models', '100 documents', 'Email support', 'Basic analytics'], cta: 'Start Free Trial', popular: false },
-    { name: 'Professional', price: '$99', period: '/month', description: 'For growing teams', features: ['100K tokens/month', 'All AI models', 'Unlimited documents', 'Priority support', 'Advanced analytics', 'API access', 'Custom integrations'], cta: 'Start Free Trial', popular: true },
-    { name: 'Enterprise', price: 'Custom', period: '', description: 'For large organizations', features: ['Unlimited tokens', 'All AI models', 'Unlimited documents', '24/7 dedicated support', 'Custom AI training', 'SLA guarantee', 'On-premise deployment', 'White-label solution'], cta: 'Contact Sales', popular: false }
+    { name: 'Student', price: 'Free', period: '', description: 'For individual learners', features: ['Unlimited lessons', 'Voice Q&A', 'Smart quizzes', '5 documents', 'Progress tracking'], cta: 'Start Learning Free', popular: false },
+    { name: 'Teacher', price: '$49', period: '/month', description: 'For educators & tutors', features: ['Unlimited classrooms', 'Student dashboard', 'Assignment management', 'Unlimited documents', 'Progress analytics', 'Web URL ingestion', 'Priority support'], cta: 'Start Free Trial', popular: true },
+    { name: 'Institution', price: 'Custom', period: '', description: 'For schools & universities', features: ['Unlimited teachers', 'Unlimited students', 'Custom branding', 'SSO integration', 'Dedicated support', 'SLA guarantee', 'On-premise option', 'Admin dashboard'], cta: 'Contact Sales', popular: false }
   ];
 
   const stats = [
-    { value: '10M+', label: t('statsDocs') },
-    { value: '99.9%', label: t('statsUptime') },
-    { value: '< 200ms', label: t('statsResponse') },
-    { value: '50K+', label: t('statsUsers') }
+    { value: '50K+', label: t('statsDocs') },
+    { value: '10K+', label: t('statsUptime') },
+    { value: '95%', label: t('statsResponse') },
+    { value: '500+', label: t('statsUsers') }
   ];
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold', boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)' }}>
-              🚀
+              🎓
             </div>
             <span style={{ fontSize: '1.5rem', fontWeight: 800, background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('appName')}</span>
           </div>
@@ -126,7 +126,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '1400px', width: '100%', textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(102, 126, 234, 0.1)', border: '1px solid rgba(102, 126, 234, 0.3)', padding: '0.5rem 1.25rem', borderRadius: '50px', marginBottom: '2rem', animation: 'fadeInDown 0.8s ease' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#667eea' }}>✨ NEW</span>
-            <span style={{ fontSize: '0.85rem', color: '#d1d5db' }}>Claude Sonnet 4 Now Available</span>
+            <span style={{ fontSize: '0.85rem', color: '#d1d5db' }}>AI Teacher with Voice Q&A Now Live</span>
           </div>
           <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 5rem)', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.5rem', background: 'linear-gradient(135deg, #fff 0%, #d1d5db 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', animation: 'fadeInUp 1s ease' }}>
             {t('heroTitle').split(' ').slice(0, 2).join(' ')}<br />
