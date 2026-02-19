@@ -41,13 +41,29 @@ const authenticatedFetch = async (endpoint, options = {}) => {
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
 
+  // Timeout: 10s for GET (fast reads), 120s for mutations (upload/delete can be slow)
+  const method = (options.method || 'GET').toUpperCase();
+  const timeoutMs = method === 'GET' ? 10000 : 120000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const config = {
     ...options,
-    headers
+    headers,
+    signal: controller.signal
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, config);
-  return handleResponse(response);
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, config);
+    clearTimeout(timeoutId);
+    return handleResponse(response);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request to ${endpoint} timed out. Is the backend running on ${API_URL}?`);
+    }
+    throw error;
+  }
 };
 
 export const apiService = {
@@ -168,23 +184,27 @@ export const apiService = {
 
           console.log("✅ Supabase File Uploaded:", publicUrl);
 
-          // 3. Register with Backend (using blob_url field for compatibility)
-          await authenticatedFetch('/api/register-file', {
+          // 3. Register with Backend (auto-queues processing)
+          const registerResult = await authenticatedFetch('/api/register-file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              filename: file.name, // Original name
+              filename: file.name,
               file_type: file.type || 'application/octet-stream',
               file_size: file.size,
               blob_url: publicUrl
             })
           });
 
+          console.log("✅ File registered & queued for processing");
+
           return {
             success: true,
             filename: file.name,
             file_name: file.name,
-            url: publicUrl
+            url: publicUrl,
+            batch_job_id: registerResult?.batch_job_id || null,
+            status: 'queued'
           };
 
         } catch (err) {
@@ -247,7 +267,7 @@ export const apiService = {
           reject(new Error('Upload timed out after 60 seconds'));
         });
 
-        xhr.timeout = 60000; // 60 second timeout
+        xhr.timeout = 300000; // 5 minute timeout (large files go to backend → Supabase)
         xhr.open('POST', `${API_URL}/api/upload`);
         if (token) {
           xhr.setRequestHeader('Authorization', `Bearer ${token}`);
@@ -264,11 +284,27 @@ export const apiService = {
     }
   },
 
-  // Process File
+  // Process File — long-running operation (chunking + embedding), needs extended timeout
   processFile: async (filename) => {
-    return authenticatedFetch(`/api/process-file?filename=${encodeURIComponent(filename)}`, {
-      method: 'POST'
-    });
+    const token = await getAuthToken();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
+
+    try {
+      const response = await fetch(`${API_URL}/api/process-file?filename=${encodeURIComponent(filename)}`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      clearTimeout(timeoutId);
+      return handleResponse(response);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') throw new Error('File processing timed out (10 min). Try a smaller file or check backend logs.');
+      throw error;
+    }
   },
 
   deleteFile: async (filename) => {
@@ -450,6 +486,95 @@ export const apiService = {
     const response = await fetch(`${API_URL}/api/edtech/generate-tts-video`, {
       method: 'POST', body: formData, headers
     });
+    return handleResponse(response);
+  },
+
+  // ---- Classroom / LMS ----
+  async getUserInfo() {
+    const response = await authenticatedFetch('/api/users/me');
+    return handleResponse(response);
+  },
+
+  async updateUserRole(role) {
+    const formData = new FormData();
+    formData.append('role', role);
+    const response = await authenticatedFetch('/api/users/role', {
+      method: 'PATCH', body: formData
+    });
+    return handleResponse(response);
+  },
+
+  async listClassrooms() {
+    const response = await authenticatedFetch('/api/classrooms');
+    return handleResponse(response);
+  },
+
+  async createClassroom(name, description = '', docName = '') {
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('description', description);
+    formData.append('doc_name', docName);
+    const response = await authenticatedFetch('/api/classrooms', {
+      method: 'POST', body: formData
+    });
+    return handleResponse(response);
+  },
+
+  async joinClassroom(joinCode) {
+    const formData = new FormData();
+    formData.append('join_code', joinCode);
+    const response = await authenticatedFetch('/api/classrooms/join', {
+      method: 'POST', body: formData
+    });
+    return handleResponse(response);
+  },
+
+  async getClassroomDetail(classroomId) {
+    const response = await authenticatedFetch(`/api/classrooms/${classroomId}`);
+    return handleResponse(response);
+  },
+
+  async createAssignment(classroomId, chapterTitle, topics = [], dueDate = '') {
+    const formData = new FormData();
+    formData.append('chapter_title', chapterTitle);
+    formData.append('topics', JSON.stringify(topics));
+    formData.append('due_date', dueDate);
+    const response = await authenticatedFetch(`/api/classrooms/${classroomId}/assignments`, {
+      method: 'POST', body: formData
+    });
+    return handleResponse(response);
+  },
+
+  async updateProgress(classroomId, topic, activityType, quizScore = 0, quizAnswers = {}) {
+    const formData = new FormData();
+    formData.append('classroom_id', classroomId);
+    formData.append('topic', topic);
+    formData.append('activity_type', activityType);
+    formData.append('quiz_score', quizScore.toString());
+    formData.append('quiz_answers', JSON.stringify(quizAnswers));
+    const response = await authenticatedFetch('/api/progress/update', {
+      method: 'POST', body: formData
+    });
+    return handleResponse(response);
+  },
+
+  async getMyProgress(classroomId = '') {
+    const params = classroomId ? `?classroom_id=${classroomId}` : '';
+    const response = await authenticatedFetch(`/api/progress/me${params}`);
+    return handleResponse(response);
+  },
+
+  async getClassroomProgress(classroomId) {
+    const response = await authenticatedFetch(`/api/classrooms/${classroomId}/progress`);
+    return handleResponse(response);
+  },
+
+  // ---- Batch Processing Status ----
+  async getBatchStatus(docName = '', jobId = '') {
+    const params = new URLSearchParams();
+    if (docName) params.append('doc_name', docName);
+    if (jobId) params.append('job_id', jobId);
+    const response = await authenticatedFetch(`/api/batch-status?${params.toString()}`);
     return handleResponse(response);
   },
 

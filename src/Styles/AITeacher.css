@@ -1300,6 +1300,82 @@
     overflow-y: auto;
 }
 
+/* ── TTS Script Panel (sentence-by-sentence view) ── */
+.tts-script-panel {
+    margin-top: 20px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(30, 27, 75, 0.3);
+    animation: bubbleFadeIn 0.3s ease;
+}
+
+.tts-script-panel-header {
+    padding: 14px 20px;
+    background: rgba(139, 92, 246, 0.1);
+    color: #a78bfa;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.tts-script-panel-body {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.tts-script-sentence {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 2px;
+}
+
+.tts-script-sentence:hover {
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.tts-script-sentence.active {
+    background: rgba(139, 92, 246, 0.15);
+    border-left: 3px solid #a78bfa;
+}
+
+.tts-script-sentence-num {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.tts-script-sentence.active .tts-script-sentence-num {
+    background: #8b5cf6;
+    color: white;
+}
+
+.tts-script-sentence-text {
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    line-height: 1.6;
+}
+
+.tts-script-sentence.active .tts-script-sentence-text {
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
 /* ── Dialogue Speaker Button ── */
 .ai-teacher-bubble-speaker-btn {
     background: none;

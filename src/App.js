@@ -106,6 +106,8 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage.jsx';
 import ChatInterface from './ChatInterface';
 import AdminDashboard from './components/AdminDashboard';
+import TeacherDashboard from './components/TeacherDashboard';
+import StudentDashboard from './components/StudentDashboard';
 import './App.css';
 
 // Protected Route Component
@@ -143,6 +145,22 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher"
+          element={
+            <ProtectedRoute>
+              <TeacherDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute>
+              <StudentDashboard />
             </ProtectedRoute>
           }
         />

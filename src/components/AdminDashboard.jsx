@@ -120,6 +120,37 @@ export default function AdminDashboard() {
     }
   };
 
+  // ── Batch Job Tracking ──
+  const [batchJobs, setBatchJobs] = useState({});
+
+  // Poll batch jobs for progress updates
+  useEffect(() => {
+    const activeJobIds = Object.keys(batchJobs).filter(
+      k => batchJobs[k] && !['completed', 'failed'].includes(batchJobs[k].status)
+    );
+    if (activeJobIds.length === 0) return;
+
+    const interval = setInterval(async () => {
+      for (const docName of activeJobIds) {
+        try {
+          const res = await apiService.getBatchStatus(docName);
+          if (res.success && res.jobs && res.jobs.length > 0) {
+            const job = res.jobs[0];
+            setBatchJobs(prev => ({ ...prev, [docName]: job }));
+            if (job.status === 'completed') {
+              showNotification(`🎉 ${docName} fully processed! Lessons & videos ready.`, STATUS_TYPES.SUCCESS);
+              fetchDashboardData();
+            } else if (job.status === 'failed') {
+              showNotification(`❌ Background processing failed for ${docName}`, STATUS_TYPES.ERROR);
+            }
+          }
+        } catch (e) { console.error('Batch poll error:', e); }
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [batchJobs, showNotification, fetchDashboardData]);
+
   const handleUploadAndProcess = async (type, file, mediaType, onProgress) => {
     if (type !== 'file' && type !== 'media') return;
     setUploading(true);
@@ -128,30 +159,51 @@ export default function AdminDashboard() {
     try {
       const uploadResult = await apiService.uploadFile(file, onProgress);
       const filename = uploadResult?.file_name ?? uploadResult?.filename ?? uploadResult?.file?.file_name ?? file?.name;
+      const batchJobId = uploadResult?.batch_job_id;
       setSelectedFile(null);
+      
+      // Small delay to ensure Supabase has committed the file metadata
+      await new Promise(r => setTimeout(r, 500));
       await fetchDashboardData();
+
       if (!filename) {
-        showNotification('✅ File uploaded. Process it from the list below.', STATUS_TYPES.SUCCESS);
+        showNotification('✅ File uploaded!', STATUS_TYPES.SUCCESS);
         setUploading(false);
         return;
       }
-      showNotification(`Chunking & saving ${filename} to DB...`, STATUS_TYPES.PROCESSING);
-      setUploading(false);
-      await handleProcessFile(filename);
+
+      // Start tracking background processing (auto-queued by register-file)
+      setBatchJobs(prev => ({
+        ...prev,
+        [filename]: { status: 'queued', progress: 0, batch_job_id: batchJobId, status_label: 'Processing in background...' }
+      }));
+
+      showNotification(
+        `✅ ${filename} uploaded & queued! Processing in background — lessons & videos will be pre-generated automatically.`,
+        STATUS_TYPES.SUCCESS
+      );
     } catch (error) {
       showNotification(`❌ Upload failed: ${error.message}`, STATUS_TYPES.ERROR);
+    } finally {
       setUploading(false);
     }
   };
 
   const handleProcessFile = async (filename) => {
     setProcessing(filename);
-    showNotification(`Processing ${filename}...`, STATUS_TYPES.PROCESSING);
+    showNotification(`Queuing ${filename} for processing...`, STATUS_TYPES.PROCESSING);
 
     try {
-      await apiService.processFile(filename);
-      showNotification(`🎉 ${filename} processed successfully!`, STATUS_TYPES.SUCCESS);
-      await fetchDashboardData();
+      const result = await apiService.processFile(filename);
+      const batchJobId = result?.batch_job_id;
+      
+      // Track via batch jobs (process-file is now async)
+      setBatchJobs(prev => ({
+        ...prev,
+        [filename]: { status: 'queued', progress: 0, batch_job_id: batchJobId, status_label: 'Queued for processing...' }
+      }));
+      
+      showNotification(`⚙️ ${filename} queued for background processing!`, STATUS_TYPES.SUCCESS);
     } catch (error) {
       showNotification(`❌ Processing failed: ${error.message}`, STATUS_TYPES.ERROR);
     } finally {
@@ -159,13 +211,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const [deleting, setDeleting] = useState(null);
+  
   const handleDeleteFile = async (filename) => {
+    setDeleting(filename);
+    showNotification(`🗑️ Deleting ${filename}...`, STATUS_TYPES.PROCESSING);
     try {
       await apiService.deleteFile(filename);
       showNotification(`🗑️ ${filename} deleted successfully`, STATUS_TYPES.SUCCESS);
       await fetchDashboardData();
     } catch (error) {
       showNotification(`❌ Delete failed: ${error.message}`, STATUS_TYPES.ERROR);
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -253,6 +311,41 @@ export default function AdminDashboard() {
           />
         </section>
 
+        {/* Background Processing Progress */}
+        {Object.entries(batchJobs).filter(([, j]) => j && j.status !== 'completed').length > 0 && (
+          <section className="content-section" style={{
+            background: 'linear-gradient(135deg, rgba(108,92,231,0.08), rgba(0,206,201,0.08))',
+            border: '1px solid rgba(108,92,231,0.2)',
+            borderRadius: '16px',
+            padding: '20px 24px'
+          }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 600 }}>
+              ⚡ Background Processing
+            </h3>
+            {Object.entries(batchJobs)
+              .filter(([, j]) => j && j.status !== 'completed')
+              .map(([docName, job]) => (
+                <div key={docName} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.85rem' }}>
+                    <span><strong>{docName}</strong></span>
+                    <span style={{ color: '#6c5ce7' }}>{job.progress || 0}%</span>
+                  </div>
+                  <div style={{
+                    background: 'rgba(0,0,0,0.15)', borderRadius: 10, height: 8, overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      width: `${job.progress || 0}%`, height: '100%', borderRadius: 10,
+                      background: 'linear-gradient(90deg, #6c5ce7, #00cec9)',
+                      transition: 'width 0.5s ease'
+                    }} />
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#888', marginTop: 4 }}>
+                    {job.status_label || job.status}
+                  </div>
+                </div>
+              ))}
+          </section>
+        )}
         {/* Files Table Section */}
         <section className="content-section files-section">
           <div className="section-header">
@@ -267,6 +360,7 @@ export default function AdminDashboard() {
           <FilesTable
             files={files}
             processing={processing}
+            deleting={deleting}
             onProcess={handleProcessFile}
             onDelete={handleDeleteFile}
           />

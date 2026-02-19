@@ -5,7 +5,7 @@ import ConfirmDialog from './ConfirmDialog';
 //import '../Styles/AdminDashboard.css';
 import '../Styles/FilesTable.css';
 
-const FilesTable = ({ files, processing, onProcess, onDelete }) => {
+const FilesTable = ({ files, processing, deleting, onProcess, onDelete }) => {
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date');
@@ -196,11 +196,19 @@ const FilesTable = ({ files, processing, onProcess, onDelete }) => {
                       )}
                       {onDelete && (
                         <button
-                          className="delete-btn"
+                          className={`delete-btn ${deleting === file.file_name ? 'deleting' : ''}`}
                           onClick={() => handleDeleteClick(file)}
-                          title={t('deleteTooltip')}
+                          disabled={deleting === file.file_name}
+                          title={deleting === file.file_name ? 'Deleting...' : t('deleteTooltip')}
                         >
-                          🗑️
+                          {deleting === file.file_name ? (
+                            <>
+                              <span className="btn-spinner"></span>
+                              Deleting...
+                            </>
+                          ) : (
+                            '🗑️'
+                          )}
                         </button>
                       )}
                     </div>

@@ -47,11 +47,33 @@ const AITeacher = ({ onClose }) => {
     const [ttsScript, setTtsScript] = useState('');
     const [currentSentenceIdx, setCurrentSentenceIdx] = useState(0);
     const [isTtsPlaying, setIsTtsPlaying] = useState(false);
+    const [showTtsScript, setShowTtsScript] = useState(false);
     const audioRef = useRef(null);
     const sentenceTimerRef = useRef(null);
     const dialogueAudioRef = useRef(null);
 
     const dialogueEndRef = useRef(null);
+
+    // ── Universal audio cleanup helper ──
+    const stopAllAudio = () => {
+        if (dialogueAudioRef.current) {
+            dialogueAudioRef.current.pause();
+            dialogueAudioRef.current.src = '';
+            dialogueAudioRef.current = null;
+        }
+        if (audioRef.current) {
+            audioRef.current.pause();
+        }
+        if (sentenceTimerRef.current) {
+            clearInterval(sentenceTimerRef.current);
+            sentenceTimerRef.current = null;
+        }
+        if (videoPollingRef.current) {
+            clearInterval(videoPollingRef.current);
+            videoPollingRef.current = null;
+        }
+        setIsTtsPlaying(false);
+    };
 
     // Load documents on mount
     useEffect(() => {
@@ -95,7 +117,15 @@ const AITeacher = ({ onClose }) => {
             };
 
             playSequence();
-            return () => { cancelled = true; };
+            return () => {
+                cancelled = true;
+                // Stop any currently-playing dialogue audio immediately
+                if (dialogueAudioRef.current) {
+                    dialogueAudioRef.current.pause();
+                    dialogueAudioRef.current.src = '';
+                    dialogueAudioRef.current = null;
+                }
+            };
         }
     }, [view, lesson]);
 
@@ -106,12 +136,12 @@ const AITeacher = ({ onClose }) => {
         }
     }, [visibleBubbles]);
 
-    // Cleanup video polling and TTS timer on unmount
+    // Cleanup ALL audio + timers on unmount
     useEffect(() => {
         return () => {
-            if (videoPollingRef.current) clearInterval(videoPollingRef.current);
-            if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
+            stopAllAudio();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const loadDocuments = async () => {
@@ -397,7 +427,7 @@ const AITeacher = ({ onClose }) => {
     };
 
     return (
-        <div className="ai-teacher-overlay" onClick={onClose}>
+        <div className="ai-teacher-overlay" onClick={() => { stopAllAudio(); onClose(); }}>
             <div className={`ai-teacher-modal ${isFullscreen ? 'ai-teacher-fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
@@ -417,7 +447,7 @@ const AITeacher = ({ onClose }) => {
                         >
                             {isFullscreen ? '⊡' : '⊞'}
                         </button>
-                        <button className="ai-teacher-close" onClick={onClose}>✕</button>
+                        <button className="ai-teacher-close" onClick={() => { stopAllAudio(); onClose(); }}>✕</button>
                     </div>
                 </div>
 
@@ -714,7 +744,7 @@ const AITeacher = ({ onClose }) => {
                     {view === 'tts-video' && ttsAudioUrl && (
                         <div className="ai-teacher-lesson">
                             <button className="ai-teacher-back-btn" onClick={() => {
-                                handleTtsPause();
+                                stopAllAudio();
                                 setView('mode-select');
                             }}>
                                 ← {t('backToModes') || 'Back to Learning Modes'}
@@ -783,20 +813,44 @@ const AITeacher = ({ onClose }) => {
                                 )}
                             </div>
 
-                            {/* Full script toggle */}
-                            <details className="tts-script-details">
-                                <summary>📝 View Full Script</summary>
-                                <div className="tts-script-text">{ttsScript}</div>
-                            </details>
-
+                            {/* Full script / conversation toggle */}
                             <div className="ai-teacher-video-actions">
                                 <button
                                     className="ai-teacher-qa-btn"
-                                    onClick={() => generateLesson(selectedTopic)}
+                                    onClick={() => setShowTtsScript(prev => !prev)}
                                 >
-                                    🎙️ {t('alsoViewConversation') || 'Also View as Conversation'}
+                                    {showTtsScript ? '🎬' : '🎙️'} {showTtsScript
+                                        ? (t('hideScript') || 'Hide Script')
+                                        : (t('alsoViewConversation') || 'View Full Script as Text')}
                                 </button>
                             </div>
+
+                            {showTtsScript && (
+                                <div className="tts-script-panel">
+                                    <div className="tts-script-panel-header">
+                                        📝 {t('fullScript') || 'Full Script'}
+                                    </div>
+                                    <div className="tts-script-panel-body">
+                                        {ttsSentences.length > 0 ? ttsSentences.map((sentence, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`tts-script-sentence ${idx === currentSentenceIdx ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    setCurrentSentenceIdx(idx);
+                                                    if (audioRef.current && audioRef.current.duration) {
+                                                        audioRef.current.currentTime = (idx / ttsSentences.length) * audioRef.current.duration;
+                                                    }
+                                                }}
+                                            >
+                                                <span className="tts-script-sentence-num">{idx + 1}</span>
+                                                <span className="tts-script-sentence-text">{sentence}</span>
+                                            </div>
+                                        )) : (
+                                            <div className="tts-script-text">{ttsScript}</div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -840,7 +894,7 @@ const AITeacher = ({ onClose }) => {
                     {/* ===== LESSON VIEW ===== */}
                     {view === 'lesson' && lesson && (
                         <div className="ai-teacher-lesson">
-                            <button className="ai-teacher-back-btn" onClick={() => setView('mode-select')}>
+                            <button className="ai-teacher-back-btn" onClick={() => { stopAllAudio(); setView('mode-select'); }}>
                                 ← {t('backToModes') || 'Back to Learning Modes'}
                             </button>
 
