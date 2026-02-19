@@ -442,6 +442,31 @@ export const apiService = {
     return handleResponse(response);
   },
 
+  speakAnswer: async (text, language = 'en') => {
+    const formData = new FormData();
+    formData.append('text', text);
+    formData.append('language', language);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/speak-answer`, {
+      method: 'POST', body: formData, headers
+    });
+    return handleResponse(response);
+  },
+
+  askDoubt: async (question, topic = '', language = 'en') => {
+    const formData = new FormData();
+    formData.append('question', question);
+    formData.append('topic', topic);
+    formData.append('language', language);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/ask-doubt`, {
+      method: 'POST', body: formData, headers
+    });
+    return handleResponse(response);
+  },
+
   // ---- HeyGen AI Video ----
   generateVideo: async (topic, docName = '', language = 'en') => {
     const formData = new FormData();

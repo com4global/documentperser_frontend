@@ -52,7 +52,164 @@ const AITeacher = ({ onClose }) => {
     const sentenceTimerRef = useRef(null);
     const dialogueAudioRef = useRef(null);
 
+    // ── Interactive Voice Q&A ("Raise Hand") state ──
+    const [isAskingDoubt, setIsAskingDoubt] = useState(false);   // mic is listening
+    const [doubtTranscript, setDoubtTranscript] = useState('');  // what user said
+    const [doubtAnswer, setDoubtAnswer] = useState('');          // LLM answer
+    const [doubtLoading, setDoubtLoading] = useState(false);     // waiting for LLM
+    const [doubtTtsPlaying, setDoubtTtsPlaying] = useState(false); // answer audio playing
+    const [doubtTypedText, setDoubtTypedText] = useState('');    // fallback typed input
+    const recognitionRef = useRef(null);
+    const preDoubtStateRef = useRef(null);  // { currentTime, sentenceIdx, wasPlaying, view }
+    const doubtAudioRef = useRef(null);     // answer TTS audio
+
+    // ── End-of-Session Q&A prompt state ──
+    const [endSessionQA, setEndSessionQA] = useState(false);       // are we in end-of-session Q&A phase?
+    const [endSessionPhase, setEndSessionPhase] = useState('');    // 'prompting' | 'listening' | 'answering' | 'thanking'
+    const [endSessionAnswer, setEndSessionAnswer] = useState('');
+    const [endSessionQuestion, setEndSessionQuestion] = useState('');
+    const [endSessionTyped, setEndSessionTyped] = useState('');
+    const endSessionAudioRef = useRef(null); // for prompt and thank-you TTS
+    const endSessionTimeoutRef = useRef(null);
+    const endSessionRecRef = useRef(null);
+
     const dialogueEndRef = useRef(null);
+
+    const hasSpeechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+    // ── End-of-Session Q&A: trigger after lesson finishes ──
+    const triggerEndOfSessionQA = () => {
+        setEndSessionQA(true);
+        setEndSessionPhase('listening');   // Go straight to listening — no waiting
+        setEndSessionAnswer('');
+        setEndSessionQuestion('');
+        setEndSessionTyped('');
+
+        // Start listening + timeout immediately
+        startEndSessionListening();
+
+        // Play the voice prompt in the background (non-blocking)
+        const prompt = language === 'ta'
+            ? 'இந்த தலைப்பில் ஏதேனும் கேள்விகள் உள்ளதா?'
+            : 'Do you have any questions on this topic?';
+        apiService.speakAnswer(prompt, language)
+            .then(ttsRes => {
+                if (ttsRes.success && ttsRes.audio_url) {
+                    const url = ttsRes.audio_url.startsWith('http')
+                        ? ttsRes.audio_url
+                        : `${process.env.REACT_APP_API_URL || ''}${ttsRes.audio_url}`;
+                    const audio = new Audio(url);
+                    endSessionAudioRef.current = audio;
+                    audio.play().catch(() => { });
+                }
+            })
+            .catch(() => { }); // non-fatal
+    };
+
+    const startEndSessionListening = () => {
+        // Start a timeout — if user doesn't ask within 15s, say thanks
+        endSessionTimeoutRef.current = setTimeout(() => {
+            handleEndSessionNoQuestion();
+        }, 15000);
+
+        // Start speech recognition if available
+        if (hasSpeechRecognition) {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SR();
+            recognition.lang = language === 'ta' ? 'ta-IN' : 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            recognition.continuous = false;
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                if (endSessionTimeoutRef.current) clearTimeout(endSessionTimeoutRef.current);
+                setEndSessionQuestion(transcript);
+                handleEndSessionQuestion(transcript);
+            };
+            recognition.onerror = () => { /* user can still type */ };
+            recognition.onend = () => { /* timeout or type will handle it */ };
+
+            endSessionRecRef.current = recognition;
+            recognition.start();
+        }
+    };
+
+    const handleEndSessionQuestion = async (question) => {
+        if (!question.trim()) return;
+        setEndSessionPhase('answering');
+
+        // Stop recognition if running
+        if (endSessionRecRef.current) try { endSessionRecRef.current.stop(); } catch (e) { /* ignore */ }
+
+        try {
+            const result = await apiService.askDoubt(question, selectedTopic, language);
+            const answer = result.success ? result.answer : 'Sorry, I could not answer that.';
+            setEndSessionAnswer(answer);
+
+            // Speak the answer
+            try {
+                const ttsRes = await apiService.speakAnswer(answer, language);
+                if (ttsRes.success && ttsRes.audio_url) {
+                    const url = ttsRes.audio_url.startsWith('http')
+                        ? ttsRes.audio_url
+                        : `${process.env.REACT_APP_API_URL || ''}${ttsRes.audio_url}`;
+                    const audio = new Audio(url);
+                    endSessionAudioRef.current = audio;
+                    audio.play().catch(() => { });
+                }
+            } catch (e) { /* non-fatal */ }
+        } catch (e) {
+            setEndSessionAnswer('Sorry, something went wrong.');
+        }
+    };
+
+    const handleEndSessionAskAnother = () => {
+        setEndSessionAnswer('');
+        setEndSessionQuestion('');
+        setEndSessionTyped('');
+        if (endSessionAudioRef.current) { endSessionAudioRef.current.pause(); endSessionAudioRef.current = null; }
+        setEndSessionPhase('listening');
+        startEndSessionListening();
+    };
+
+    const handleEndSessionNoQuestion = async () => {
+        if (endSessionTimeoutRef.current) clearTimeout(endSessionTimeoutRef.current);
+        if (endSessionRecRef.current) try { endSessionRecRef.current.stop(); } catch (e) { /* ignore */ }
+        if (endSessionAudioRef.current) { endSessionAudioRef.current.pause(); endSessionAudioRef.current = null; }
+
+        setEndSessionPhase('thanking');
+
+        try {
+            const thanks = language === 'ta'
+                ? 'நன்றி! கற்றலை தொடருங்கள்!'
+                : 'Thank you for attending! Keep learning and stay curious!';
+            const ttsRes = await apiService.speakAnswer(thanks, language);
+            if (ttsRes.success && ttsRes.audio_url) {
+                const url = ttsRes.audio_url.startsWith('http')
+                    ? ttsRes.audio_url
+                    : `${process.env.REACT_APP_API_URL || ''}${ttsRes.audio_url}`;
+                const audio = new Audio(url);
+                endSessionAudioRef.current = audio;
+                audio.onended = () => { setEndSessionQA(false); setEndSessionPhase(''); };
+                audio.play().catch(() => {
+                    setTimeout(() => { setEndSessionQA(false); setEndSessionPhase(''); }, 3000);
+                });
+            } else {
+                setTimeout(() => { setEndSessionQA(false); setEndSessionPhase(''); }, 3000);
+            }
+        } catch (e) {
+            setTimeout(() => { setEndSessionQA(false); setEndSessionPhase(''); }, 3000);
+        }
+    };
+
+    const handleEndSessionDismiss = () => {
+        if (endSessionTimeoutRef.current) clearTimeout(endSessionTimeoutRef.current);
+        if (endSessionRecRef.current) try { endSessionRecRef.current.stop(); } catch (e) { /* ignore */ }
+        if (endSessionAudioRef.current) { endSessionAudioRef.current.pause(); endSessionAudioRef.current = null; }
+        setEndSessionQA(false);
+        setEndSessionPhase('');
+    };
 
     // ── Universal audio cleanup helper ──
     const stopAllAudio = () => {
@@ -71,6 +228,19 @@ const AITeacher = ({ onClose }) => {
         if (videoPollingRef.current) {
             clearInterval(videoPollingRef.current);
             videoPollingRef.current = null;
+        }
+        // End-session cleanup
+        if (endSessionAudioRef.current) {
+            endSessionAudioRef.current.pause();
+            endSessionAudioRef.current = null;
+        }
+        if (endSessionTimeoutRef.current) {
+            clearTimeout(endSessionTimeoutRef.current);
+            endSessionTimeoutRef.current = null;
+        }
+        if (endSessionRecRef.current) {
+            try { endSessionRecRef.current.stop(); } catch (e) { /* ignore */ }
+            endSessionRecRef.current = null;
         }
         setIsTtsPlaying(false);
     };
@@ -114,6 +284,12 @@ const AITeacher = ({ onClose }) => {
                         await new Promise(r => setTimeout(r, 2000));
                     }
                 }
+
+                // All dialogue bubbles finished — trigger end-of-session Q&A
+                // (skip if user is currently in the doubt panel)
+                if (!cancelled && !isAskingDoubt) {
+                    triggerEndOfSessionQA();
+                }
             };
 
             playSequence();
@@ -127,6 +303,7 @@ const AITeacher = ({ onClose }) => {
                 }
             };
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [view, lesson]);
 
     // Scroll to latest bubble
@@ -372,6 +549,143 @@ const AITeacher = ({ onClose }) => {
             setQaAnswer('Sorry, I could not find an answer. Please try rephrasing your question.');
         }
         setQaLoading(false);
+    };
+
+    // ── Interactive Voice Q&A: "Raise Hand" ──
+
+    const handleRaiseHand = () => {
+        // 1. Pause current audio and save position
+        const state = { wasPlaying: false, currentTime: 0, sentenceIdx: currentSentenceIdx, view };
+
+        if (view === 'tts-video' && audioRef.current) {
+            state.wasPlaying = !audioRef.current.paused;
+            state.currentTime = audioRef.current.currentTime;
+            handleTtsPause();
+        } else if (view === 'lesson' && dialogueAudioRef.current) {
+            state.wasPlaying = !dialogueAudioRef.current.paused;
+            dialogueAudioRef.current.pause();
+        }
+
+        preDoubtStateRef.current = state;
+        setDoubtTranscript('');
+        setDoubtAnswer('');
+        setDoubtTypedText('');
+        setDoubtLoading(false);
+        setIsAskingDoubt(true);
+
+        // 2. Start speech recognition if available
+        if (hasSpeechRecognition) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = language === 'ta' ? 'ta-IN' : 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            recognition.continuous = false;
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setDoubtTranscript(transcript);
+                submitDoubt(transcript);
+            };
+
+            recognition.onerror = (event) => {
+                console.log('Speech recognition error:', event.error);
+                // On error, user can still type
+            };
+
+            recognition.onend = () => {
+                // Recognition ended — don't close panel, let user type if no result
+            };
+
+            recognitionRef.current = recognition;
+            recognition.start();
+        }
+    };
+
+    const submitDoubt = async (question) => {
+        if (!question.trim()) return;
+        setDoubtLoading(true);
+        try {
+            // Stop listening if still active
+            if (recognitionRef.current) {
+                try { recognitionRef.current.stop(); } catch (e) { /* ignore */ }
+            }
+
+            // Ask the LLM
+            const result = await apiService.askDoubt(question, selectedTopic, language);
+            const answer = result.success ? result.answer : 'Sorry, I could not find an answer.';
+            setDoubtAnswer(answer);
+
+            // Speak the answer via TTS
+            try {
+                const ttsResult = await apiService.speakAnswer(answer, language);
+                if (ttsResult.success && ttsResult.audio_url) {
+                    const url = ttsResult.audio_url.startsWith('http')
+                        ? ttsResult.audio_url
+                        : `${process.env.REACT_APP_API_URL || ''}${ttsResult.audio_url}`;
+                    const answerAudio = new Audio(url);
+                    doubtAudioRef.current = answerAudio;
+                    setDoubtTtsPlaying(true);
+                    answerAudio.onended = () => setDoubtTtsPlaying(false);
+                    answerAudio.onerror = () => setDoubtTtsPlaying(false);
+                    answerAudio.play().catch(() => setDoubtTtsPlaying(false));
+                }
+            } catch (ttsErr) {
+                console.log('Answer TTS failed (non-fatal):', ttsErr);
+            }
+        } catch (err) {
+            console.error('Doubt Q&A failed:', err);
+            setDoubtAnswer('Sorry, something went wrong. Please try again.');
+        }
+        setDoubtLoading(false);
+    };
+
+    const handleDismissDoubt = () => {
+        // Stop any playing answer audio
+        if (doubtAudioRef.current) {
+            doubtAudioRef.current.pause();
+            doubtAudioRef.current = null;
+        }
+        if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch (e) { /* ignore */ }
+        }
+        setIsAskingDoubt(false);
+        setDoubtTranscript('');
+        setDoubtAnswer('');
+        setDoubtLoading(false);
+        setDoubtTtsPlaying(false);
+    };
+
+    const handleResumeLesson = () => {
+        const saved = preDoubtStateRef.current;
+
+        // Stop doubt answer audio FIRST
+        if (doubtAudioRef.current) {
+            doubtAudioRef.current.pause();
+            doubtAudioRef.current.src = '';
+            doubtAudioRef.current = null;
+        }
+
+        handleDismissDoubt();
+
+        if (!saved) return;
+
+        // Resume lesson audio from saved position
+        if (saved.view === 'tts-video' && audioRef.current) {
+            // Ensure the audio element still points at the lesson audio
+            if (ttsAudioUrl && audioRef.current.src !== ttsAudioUrl) {
+                audioRef.current.src = ttsAudioUrl;
+            }
+            audioRef.current.currentTime = saved.currentTime;
+            if (saved.wasPlaying) {
+                // Small delay to let the audio element settle
+                setTimeout(() => handleTtsPlay(), 100);
+            }
+        } else if (saved.view === 'lesson' && dialogueAudioRef.current) {
+            if (saved.wasPlaying) {
+                dialogueAudioRef.current.play().catch(() => { });
+            }
+        }
     };
 
     // ── Dialogue audio playback ──
@@ -792,6 +1106,10 @@ const AITeacher = ({ onClose }) => {
                                     setIsTtsPlaying(false);
                                     if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
                                     setCurrentSentenceIdx(ttsSentences.length - 1);
+                                    // Trigger end-of-session Q&A (skip if in doubt panel)
+                                    if (!isAskingDoubt) {
+                                        triggerEndOfSessionQA();
+                                    }
                                 }}
                                 onPlay={() => { setIsTtsPlaying(true); startSentenceSync(); }}
                                 onPause={() => { setIsTtsPlaying(false); }}
@@ -811,6 +1129,14 @@ const AITeacher = ({ onClose }) => {
                                         ▶️
                                     </button>
                                 )}
+                                <button
+                                    className={`tts-control-btn doubt-mic-btn ${isAskingDoubt ? 'listening' : ''}`}
+                                    onClick={handleRaiseHand}
+                                    title="Raise hand — Ask a doubt"
+                                    disabled={isAskingDoubt}
+                                >
+                                    🎤
+                                </button>
                             </div>
 
                             {/* Full script / conversation toggle */}
@@ -955,6 +1281,16 @@ const AITeacher = ({ onClose }) => {
                                 <div ref={dialogueEndRef} />
                             </div>
 
+                            {/* Floating Mic Button for Dialogue Lesson */}
+                            <button
+                                className={`doubt-floating-mic ${isAskingDoubt ? 'listening' : ''}`}
+                                onClick={handleRaiseHand}
+                                title="Raise hand — Ask a doubt"
+                                disabled={isAskingDoubt}
+                            >
+                                🎤 {isAskingDoubt ? 'Listening...' : 'Ask a Doubt'}
+                            </button>
+
                             {/* Show quiz + takeaways only after all bubbles visible */}
                             {visibleBubbles >= (lesson.dialogue?.length || 0) && (
                                 <>
@@ -1049,6 +1385,238 @@ const AITeacher = ({ onClose }) => {
                     )}
 
                 </div>
+
+                {/* ===== DOUBT / VOICE Q&A PANEL OVERLAY ===== */}
+                {isAskingDoubt && (
+                    <div className="doubt-panel-overlay">
+                        <div className="doubt-panel">
+                            <div className="doubt-panel-header">
+                                <span>🎤 Ask Your Doubt</span>
+                                <button className="doubt-panel-close" onClick={handleDismissDoubt}>✕</button>
+                            </div>
+
+                            <div className="doubt-panel-body">
+                                {/* Listening indicator */}
+                                {!doubtTranscript && !doubtAnswer && !doubtLoading && (
+                                    <div className="doubt-listening">
+                                        <div className="doubt-listening-waves">
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                        </div>
+                                        <p>{hasSpeechRecognition ? 'Listening... speak your question' : 'Type your question below'}</p>
+                                    </div>
+                                )}
+
+                                {/* Transcript */}
+                                {doubtTranscript && (
+                                    <div className="doubt-transcript">
+                                        <strong>You asked:</strong>
+                                        <p>{doubtTranscript}</p>
+                                    </div>
+                                )}
+
+                                {/* Type fallback: always available */}
+                                {!doubtAnswer && !doubtLoading && (
+                                    <div className="doubt-type-fallback">
+                                        <input
+                                            type="text"
+                                            className="doubt-type-input"
+                                            placeholder="Or type your question here..."
+                                            value={doubtTypedText}
+                                            onChange={(e) => setDoubtTypedText(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && doubtTypedText.trim()) {
+                                                    setDoubtTranscript(doubtTypedText);
+                                                    submitDoubt(doubtTypedText);
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            className="doubt-send-btn"
+                                            onClick={() => {
+                                                if (doubtTypedText.trim()) {
+                                                    setDoubtTranscript(doubtTypedText);
+                                                    submitDoubt(doubtTypedText);
+                                                }
+                                            }}
+                                            disabled={!doubtTypedText.trim()}
+                                        >
+                                            Ask
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Loading */}
+                                {doubtLoading && (
+                                    <div className="doubt-loading">
+                                        <div className="doubt-loading-spinner"></div>
+                                        <p>Finding the answer...</p>
+                                    </div>
+                                )}
+
+                                {/* Answer */}
+                                {doubtAnswer && (
+                                    <div className="doubt-answer">
+                                        <strong>Answer {doubtTtsPlaying ? '🔊' : ''}:</strong>
+                                        <p>{doubtAnswer}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Resume button (only after answer) */}
+                            {doubtAnswer && !doubtLoading && (
+                                <div className="doubt-panel-footer">
+                                    <button className="doubt-resume-btn" onClick={handleResumeLesson}>
+                                        ▶️ Resume Lesson
+                                    </button>
+                                    <button className="doubt-ask-another" onClick={() => {
+                                        setDoubtTranscript('');
+                                        setDoubtAnswer('');
+                                        setDoubtTypedText('');
+                                        if (hasSpeechRecognition) {
+                                            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                                            const r = new SR();
+                                            r.lang = language === 'ta' ? 'ta-IN' : 'en-US';
+                                            r.interimResults = false;
+                                            r.onresult = (ev) => {
+                                                const t = ev.results[0][0].transcript;
+                                                setDoubtTranscript(t);
+                                                submitDoubt(t);
+                                            };
+                                            recognitionRef.current = r;
+                                            r.start();
+                                        }
+                                    }}>
+                                        🎤 Ask Another
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* ===== END-OF-SESSION Q&A OVERLAY ===== */}
+                {endSessionQA && (
+                    <div className="doubt-panel-overlay">
+                        <div className="doubt-panel end-session-panel">
+                            <div className="doubt-panel-header" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(99,102,241,0.1))' }}>
+                                <span>🎓 Session Complete</span>
+                                <button className="doubt-panel-close" onClick={handleEndSessionDismiss}>✕</button>
+                            </div>
+
+                            <div className="doubt-panel-body">
+                                {/* Prompting phase — avatar is asking */}
+                                {endSessionPhase === 'prompting' && (
+                                    <div className="doubt-listening" style={{ padding: '24px 0' }}>
+                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>👩‍🏫</div>
+                                        <p style={{ color: '#e2e8f0', fontWeight: 600 }}>Do you have any questions on this topic?</p>
+                                        <div className="doubt-loading-spinner" style={{ marginTop: '16px' }}></div>
+                                    </div>
+                                )}
+
+                                {/* Listening phase */}
+                                {endSessionPhase === 'listening' && (
+                                    <>
+                                        <div className="doubt-listening">
+                                            <div className="doubt-listening-waves">
+                                                <span></span><span></span><span></span><span></span><span></span>
+                                            </div>
+                                            <p>{hasSpeechRecognition ? '🎤 Listening... ask your question now!' : 'Type your question below'}</p>
+                                            <p style={{ color: '#475569', fontSize: '0.75rem', marginTop: '8px' }}>
+                                                (Will close automatically if no question is asked)
+                                            </p>
+                                        </div>
+
+                                        <div className="doubt-type-fallback">
+                                            <input
+                                                type="text"
+                                                className="doubt-type-input"
+                                                placeholder="Type your question here..."
+                                                value={endSessionTyped}
+                                                onChange={(e) => setEndSessionTyped(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && endSessionTyped.trim()) {
+                                                        if (endSessionTimeoutRef.current) clearTimeout(endSessionTimeoutRef.current);
+                                                        setEndSessionQuestion(endSessionTyped);
+                                                        handleEndSessionQuestion(endSessionTyped);
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                className="doubt-send-btn"
+                                                onClick={() => {
+                                                    if (endSessionTyped.trim()) {
+                                                        if (endSessionTimeoutRef.current) clearTimeout(endSessionTimeoutRef.current);
+                                                        setEndSessionQuestion(endSessionTyped);
+                                                        handleEndSessionQuestion(endSessionTyped);
+                                                    }
+                                                }}
+                                                disabled={!endSessionTyped.trim()}
+                                            >
+                                                Ask
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Asked question display */}
+                                {endSessionQuestion && (
+                                    <div className="doubt-transcript">
+                                        <strong>Your question:</strong>
+                                        <p>{endSessionQuestion}</p>
+                                    </div>
+                                )}
+
+                                {/* Answering phase — loading */}
+                                {endSessionPhase === 'answering' && !endSessionAnswer && (
+                                    <div className="doubt-loading">
+                                        <div className="doubt-loading-spinner"></div>
+                                        <p>Finding the answer...</p>
+                                    </div>
+                                )}
+
+                                {/* Answer display */}
+                                {endSessionAnswer && (
+                                    <div className="doubt-answer">
+                                        <strong>Answer:</strong>
+                                        <p>{endSessionAnswer}</p>
+                                    </div>
+                                )}
+
+                                {/* Thanking phase */}
+                                {endSessionPhase === 'thanking' && (
+                                    <div className="doubt-listening" style={{ padding: '24px 0' }}>
+                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>🙏</div>
+                                        <p style={{ color: '#4ade80', fontWeight: 700, fontSize: '1.1rem' }}>
+                                            {language === 'ta' ? 'நன்றி! கற்றலை தொடருங்கள்!' : 'Thank you! Keep learning!'}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer buttons */}
+                            <div className="doubt-panel-footer">
+                                {endSessionPhase === 'listening' && (
+                                    <button className="doubt-resume-btn" onClick={handleEndSessionNoQuestion}
+                                        style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
+                                        👋 No Questions, Thanks!
+                                    </button>
+                                )}
+                                {endSessionAnswer && endSessionPhase === 'answering' && (
+                                    <>
+                                        <button className="doubt-ask-another" onClick={handleEndSessionAskAnother}>
+                                            🎤 Ask Another
+                                        </button>
+                                        <button className="doubt-resume-btn" onClick={handleEndSessionNoQuestion}
+                                            style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
+                                            👋 No More Questions
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
         </div>
     );

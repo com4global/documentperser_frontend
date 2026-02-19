@@ -1497,6 +1497,395 @@
     color: #2dd4bf;
 }
 
+/* =====================================================
+   INTERACTIVE VOICE Q&A — "Raise Hand" / Doubt Panel
+   ===================================================== */
+
+/* ---- Mic Button in TTS Controls ---- */
+.doubt-mic-btn {
+    position: relative;
+    transition: all 0.3s ease !important;
+}
+
+.doubt-mic-btn:not(:disabled):hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #f87171 !important;
+    transform: scale(1.15);
+}
+
+.doubt-mic-btn.listening {
+    background: rgba(239, 68, 68, 0.3) !important;
+    color: #f87171 !important;
+    animation: micPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+    }
+}
+
+/* ---- Floating Mic Button for Dialogue Lesson ---- */
+.doubt-floating-mic {
+    position: sticky;
+    bottom: 16px;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35);
+    transition: all 0.3s ease;
+    z-index: 10;
+    margin-top: 16px;
+}
+
+.doubt-floating-mic:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 6px 28px rgba(239, 68, 68, 0.45);
+}
+
+.doubt-floating-mic.listening {
+    animation: micPulse 1.2s ease-in-out infinite;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.doubt-floating-mic:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ---- Doubt Panel Overlay ---- */
+.doubt-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    animation: overlayFadeIn 0.25s ease;
+}
+
+@keyframes overlayFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.doubt-panel {
+    width: 100%;
+    max-width: 520px;
+    background: linear-gradient(145deg, #1a1f2e, #151928);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 20px 20px 12px 12px;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    animation: panelSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes panelSlideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.doubt-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(139, 92, 246, 0.1));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-weight: 700;
+    font-size: 1rem;
+    color: #f1f5f9;
+}
+
+.doubt-panel-close {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.doubt-panel-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.doubt-panel-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+/* ---- Listening Waves ---- */
+.doubt-listening {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.doubt-listening p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin-top: 16px;
+}
+
+.doubt-listening-waves {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 40px;
+}
+
+.doubt-listening-waves span {
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(180deg, #ef4444, #8b5cf6);
+    border-radius: 4px;
+    animation: waveAnim 0.8s ease-in-out infinite;
+}
+
+.doubt-listening-waves span:nth-child(1) {
+    animation-delay: 0.0s;
+}
+
+.doubt-listening-waves span:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.doubt-listening-waves span:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.doubt-listening-waves span:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+.doubt-listening-waves span:nth-child(5) {
+    animation-delay: 0.4s;
+}
+
+@keyframes waveAnim {
+
+    0%,
+    100% {
+        height: 8px;
+        opacity: 0.5;
+    }
+
+    50% {
+        height: 32px;
+        opacity: 1;
+    }
+}
+
+/* ---- Transcript ---- */
+.doubt-transcript {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.doubt-transcript strong {
+    color: #a78bfa;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.doubt-transcript p {
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    margin: 6px 0 0;
+    line-height: 1.5;
+}
+
+/* ---- Type Fallback ---- */
+.doubt-type-fallback {
+    display: flex;
+    gap: 8px;
+}
+
+.doubt-type-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.doubt-type-input:focus {
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.doubt-type-input::placeholder {
+    color: #475569;
+}
+
+.doubt-send-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.doubt-send-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.doubt-send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ---- Loading ---- */
+.doubt-loading {
+    text-align: center;
+    padding: 16px 0;
+}
+
+.doubt-loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(139, 92, 246, 0.2);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 12px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.doubt-loading p {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+/* ---- Answer ---- */
+.doubt-answer {
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.doubt-answer strong {
+    color: #4ade80;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.doubt-answer p {
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    margin: 8px 0 0;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+/* ---- Panel Footer (Resume / Ask Another) ---- */
+.doubt-panel-footer {
+    display: flex;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.doubt-resume-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.doubt-resume-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.35);
+}
+
+.doubt-ask-another {
+    padding: 12px 18px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.doubt-ask-another:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: translateY(-1px);
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
     .ai-teacher-topics-grid {
