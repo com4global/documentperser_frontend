@@ -417,10 +417,11 @@ export const apiService = {
     return handleResponse(response);
   },
 
-  generateLesson: async (topic, language = 'en') => {
+  generateLesson: async (topic, language = 'en', docName = '') => {
     const formData = new FormData();
     formData.append('topic', topic);
     formData.append('language', language);
+    formData.append('doc_name', docName);
     const token = await getAuthToken();
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
     const response = await fetch(`${API_URL}/api/edtech/generate-lesson`, {

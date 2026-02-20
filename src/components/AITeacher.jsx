@@ -408,7 +408,7 @@ const AITeacher = ({ onClose }) => {
         setQaAnswer('');
 
         try {
-            const result = await apiService.generateLesson(topicTitle, language);
+            const result = await apiService.generateLesson(topicTitle, language, selectedDoc);
             if (result.success && result.lesson) {
                 setLesson(result.lesson);
                 setView('lesson');
