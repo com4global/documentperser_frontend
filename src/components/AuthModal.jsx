@@ -11,12 +11,11 @@ import '../Styles/AuthModal.css';
 
 const ROLES = [
   { id: 'student', icon: '🎒', label: 'Student', desc: 'Learn from assigned topics' },
-  { id: 'teacher', icon: '👩‍🏫', label: 'Teacher', desc: 'Create classrooms & assign goals' },
+  { id: 'teacher', icon: '👩‍‍🏫', label: 'Teacher', desc: 'Create classrooms & assign goals' },
   { id: 'individual', icon: '📖', label: 'Individual Learner', desc: 'Self-paced learning' },
   { id: 'other', icon: '🌐', label: 'Other', desc: 'Explore freely' },
 ];
 
-// Navigate after role selection based on role
 function destinationFor(role) {
   if (role === 'teacher') return '/teacher';
   if (role === 'student') return '/student';
@@ -25,7 +24,7 @@ function destinationFor(role) {
 
 export default function AuthModal({ show, onClose, initialMode = 'signin' }) {
   const navigate = useNavigate();
-  const [mode, setMode] = useState(initialMode); // 'signin' | 'signup' | 'role-select'
+  const [mode, setMode] = useState(initialMode); // 'signin'|'signup'|'role-select'|'verify-email'
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -38,6 +37,7 @@ export default function AuthModal({ show, onClose, initialMode = 'signin' }) {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [roleSubmitting, setRoleSubmitting] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
 
   const { register, login, error: authError, clearError } = useAuth();
 
@@ -94,11 +94,20 @@ export default function AuthModal({ show, onClose, initialMode = 'signin' }) {
       if (mode === 'signup') {
         result = await register(formData.email, formData.password, formData.fullName, formData.company || null);
         if (result.success) {
-          // Show role picker instead of navigating immediately
-          setMode('role-select');
+          // Check if Supabase requires email confirmation:
+          // When confirmation is required, data.session is null
+          const sessionExists = result.data?.session != null;
+          if (sessionExists) {
+            // Confirmation disabled → go straight to role picker
+            setMode('role-select');
+          } else {
+            // Confirmation enabled → show 'check your email' screen
+            setPendingEmail(formData.email);
+            setMode('verify-email');
+          }
           return;
         }
-        // Registration API returned failure — try login for existing user
+        // Registration failed — try login in case account already exists
         result = await login(formData.email, formData.password);
         if (result.success) { handleClose(); navigate('/chat'); return; }
       } else {
@@ -118,6 +127,7 @@ export default function AuthModal({ show, onClose, initialMode = 'signin' }) {
     setSelectedRole(roleId);
     setRoleSubmitting(true);
     try {
+      // Only call backend if there's an active session (email confirmed)
       await apiService.updateUserRole(roleId);
     } catch (e) {
       console.warn('Role update failed (non-fatal):', e);
@@ -134,6 +144,29 @@ export default function AuthModal({ show, onClose, initialMode = 'signin' }) {
   };
 
   if (!show) return null;
+
+  // ── Email Verification Pending Screen ──
+  if (mode === 'verify-email') {
+    return (
+      <div className="auth-modal-overlay" onClick={handleClose}>
+        <div className="auth-modal-content" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', padding: '40px 32px' }}>
+          <div style={{ fontSize: '3rem', marginBottom: 16 }}>📧</div>
+          <h2 className="auth-modal-title">Check your email</h2>
+          <p className="auth-modal-subtitle" style={{ marginBottom: 8 }}>
+            We sent a verification link to
+          </p>
+          <p style={{ fontWeight: 700, color: '#a78bfa', marginBottom: 20 }}>{pendingEmail}</p>
+          <p style={{ color: '#888', fontSize: '0.88rem', marginBottom: 28 }}>
+            Click the link in your email to activate your account, then come back and sign in.
+          </p>
+          <button className="auth-primary-btn" onClick={handleClose}>Got it, close</button>
+          <p style={{ color: '#666', fontSize: '0.78rem', marginTop: 16 }}>
+            Didn&apos;t get the email? Check your spam folder.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // ── Role Selection Screen ──
   if (mode === 'role-select') {

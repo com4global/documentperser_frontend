@@ -1,267 +1,158 @@
 /**
- * Authentication Context and Provider
- * Manages user authentication state and token management
+ * Authentication Context
+ * Uses Supabase client-side auth for all operations.
+ * Exposes both the "supabase style" (signUp / session) used by LoginPage
+ * and the "register/login" aliases used by AuthModal.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { APP_CONFIG } from '../utils/constants';
+import { supabase } from '../supabaseClient';
 
-const API_URL = APP_CONFIG.API_URL || 'http://localhost:10000';
 const AuthContext = createContext(null);
-console.log('AuthContext initialized with API URL:', API_URL); // Debug log to verify API URL
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 };
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
-  // Token management
-  const getAccessToken = () => localStorage.getItem('access_token');
-  const getRefreshToken = () => localStorage.getItem('refresh_token');
-  
-  const setTokens = (accessToken, refreshToken) => {
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('refresh_token', refreshToken);
-  };
-
-  const clearTokens = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-  };
-
-  // Initialize auth state from localStorage
+  // ── Bootstrap: restore session from Supabase ──────────────────────
   useEffect(() => {
-    const initAuth = async () => {
-      const token = getAccessToken();
-      const savedUser = localStorage.getItem('user');
-      
-      if (token && savedUser) {
-        try {
-          setUser(JSON.parse(savedUser));
-          // Optionally verify token is still valid
-          await fetchUserInfo();
-        } catch (err) {
-          console.error('Auth initialization failed:', err);
-          clearTokens();
-        }
-      }
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setUser(s?.user ?? null);
       setLoading(false);
-    };
+    });
 
-    initAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+      setLoading(false);
+
+      // Persist access_token for backend API calls
+      if (s?.access_token) {
+        localStorage.setItem('access_token', s.access_token);
+        localStorage.setItem('refresh_token', s.refresh_token ?? '');
+        localStorage.setItem('user', JSON.stringify(s.user));
+      } else {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch current user info
-  const fetchUserInfo = async () => {
-    try {
-       const response = await fetch(`${API_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${getAccessToken()}`
-        }
-      });
+  // ── Helpers ────────────────────────────────────────────────────────
+  const clearError = () => setError(null);
 
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-        return userData;
-      } else if (response.status === 401) {
-        // Token expired, try to refresh
-        await refreshAccessToken();
-      }
-    } catch (err) {
-      console.error('Failed to fetch user info:', err);
-      throw err;
-    }
+  // getAccessToken — returns the live JWT from the Supabase session
+  const getAccessToken = () =>
+    session?.access_token ?? localStorage.getItem('access_token') ?? null;
+
+  // ── signUp (Supabase style — LoginPage uses this) ──────────────────
+  const signUp = async (email, password, fullName = '') => {
+    setError(null);
+    const { data, error: err } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName },
+        // emailRedirectTo: window.location.origin   ← uncomment if you want custom redirect
+      },
+    });
+    if (err) { setError(err.message); return { error: err }; }
+    return { data, error: null };
   };
 
-  // Refresh access token
-  const refreshAccessToken = async () => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/api/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken })
-      });
-
-      if (response.ok) {
-        const { access_token } = await response.json();
-        localStorage.setItem('access_token', access_token);
-        return access_token;
-      } else {
-        throw new Error('Failed to refresh token');
-      }
-    } catch (err) {
-      clearTokens();
-      setUser(null);
-      navigate('/');
-      throw err;
-    }
-  };
-
-  // Register new user
-  const register = async (email, password, fullName, company = null) => {
+  // ── register (alias used by AuthModal) ────────────────────────────
+  const register = async (email, password, fullName = '', _company = null) => {
     setError(null);
     setLoading(true);
-
-    try {
-     // const response = await fetch('http://localhost:10000/api/auth/register', {
-        const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          full_name: fullName,
-          company
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Registration failed');
-      }
-
-      // Store tokens
-      setTokens(data.access_token, data.refresh_token);
-      
-      // Fetch user info
-      await fetchUserInfo();
-      
-      return { success: true };
-    } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
-    } finally {
-      setLoading(false);
-    }
+    const { data, error: err } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } },
+    });
+    setLoading(false);
+    if (err) { setError(err.message); return { success: false, error: err.message }; }
+    return { success: true, data };
   };
 
-  // Login user
+  // ── login (Supabase style — AuthModal + LoginPage) ─────────────────
   const login = async (email, password) => {
     setError(null);
     setLoading(true);
-
-    try {
-      //const response = await fetch('http://localhost:10000/api/auth/login', {
-        const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
-      }
-
-      // Store tokens
-      setTokens(data.access_token, data.refresh_token);
-      
-      // Fetch user info
-      await fetchUserInfo();
-      
-      return { success: true };
-    } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
-    } finally {
-      setLoading(false);
-    }
+    const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (err) { setError(err.message); return { success: false, error: err.message }; }
+    return { success: true, data };
   };
 
-  // Logout user
+  // ── signInWithGoogle ──────────────────────────────────────────────
+  const signInWithGoogle = async () => {
+    setError(null);
+    const { data, error: err } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/chat' },
+    });
+    if (err) { setError(err.message); return { error: err }; }
+    return { data, error: null };
+  };
+
+  // ── logout ────────────────────────────────────────────────────────
   const logout = async () => {
-    console.log('🔴 Logout initiated from AuthContext');
-    console.log('Access Token:', getAccessToken());
-    console.log('Refresh Token:', getRefreshToken());
-    try {
-      const refreshToken = getRefreshToken();
-      console.log('Logging out with refresh token:', refreshToken);
-      if (refreshToken) {
-        console.log('📤 Sending logout request to backend...');
-        //const response = await fetch('http://localhost:10000/api/auth/logout', {
-          const response = await fetch(`${API_URL}/api/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getAccessToken()}`
-          },
-          body: JSON.stringify({ refresh_token: refreshToken })
-        });
-         if (response.ok) {
-        console.log('✅ Backend logout successful');
-      } else {
-        console.warn('⚠️ Backend logout failed:', await response.text());
-      }
-      }
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      clearTokens();
-      setUser(null);
-      navigate('/');
-    }
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
   };
 
-  // API call helper with automatic token refresh
+  // ── fetchUserInfo (kept for backward compat with other components) ─
+  const fetchUserInfo = () => user;
+
+  // ── authenticatedFetch (for backend API calls) ────────────────────
   const authenticatedFetch = async (url, options = {}) => {
     const token = getAccessToken();
-    
+    const fullUrl = url.startsWith('http') ? url
+      : (process.env.REACT_APP_API_URL || 'http://localhost:10000') + url;
+
     const config = {
       ...options,
       headers: {
         ...options.headers,
-        'Authorization': `Bearer ${token}`
-      }
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     };
-
-    let response = await fetch(url, config);
-     console.log('API call to', url, 'response status:', response.status);
-    // If unauthorized, try refreshing token
-    if (response.status === 401) {
-      try {
-        const newToken = await refreshAccessToken();
-        config.headers['Authorization'] = `Bearer ${newToken}`;
-        response = await fetch(url, config);
-      } catch (err) {
-        logout();
-        throw new Error('Session expired. Please login again.');
-      }
-    }
-
-    return response;
+    return fetch(fullUrl, config);
   };
 
   const value = {
+    // state
     user,
+    session,
     loading,
     error,
-    register,
+    isAuthenticated: !!session,
+
+    // auth actions
+    signUp,
+    register,     // alias for AuthModal
     login,
     logout,
+    signInWithGoogle,
+
+    // helpers
     fetchUserInfo,
     authenticatedFetch,
-    isAuthenticated: !!user,
-    clearError: () => setError(null)
+    getAccessToken,
+    clearError,
   };
 
   return (
