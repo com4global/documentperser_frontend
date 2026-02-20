@@ -1273,7 +1273,9 @@ const AITeacher = ({ onClose }) => {
                                                 }}
                                             >
                                                 <span className="tts-script-sentence-num">{idx + 1}</span>
-                                                <span className="tts-script-sentence-text">{sentence}</span>
+                                                <span className="tts-script-sentence-text">
+                                                    {typeof sentence === 'object' && sentence !== null ? sentence.text : sentence}
+                                                </span>
                                             </div>
                                         )) : (
                                             <div className="tts-script-text">{ttsScript}</div>

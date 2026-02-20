@@ -229,7 +229,12 @@ export const translations = {
         quickQuiz: "Quick Quiz",
         askQuestion: "Ask a Question",
         typeYourQuestion: "Type your question about this topic...",
-        askBtn: "Ask"
+        askBtn: "Ask",
+        alsoViewConversation: "Also View as Conversation",
+        hideScript: "Hide Script",
+        fullScript: "Full Script",
+        backToChapters: "Back to Chapters",
+        noMoreQuestions: "No More Questions"
     },
     ta: {
         // Common
@@ -462,7 +467,12 @@ export const translations = {
         quickQuiz: "விரைவு வினாடி வினா",
         askQuestion: "கேள்வி கேளுங்கள்",
         typeYourQuestion: "இந்தத் தலைப்பைப் பற்றி உங்கள் கேள்வியை தட்டச்சு செய்யுங்கள்...",
-        askBtn: "கேளு"
+        askBtn: "கேளு",
+        alsoViewConversation: "உரையாடலாகவும் காண்க",
+        hideScript: "ஸ்கிரிப்ட் மறை",
+        fullScript: "முழு ஸ்கிரிப்ட்",
+        backToChapters: "அத்தியாயங்களுக்கு திரும்பு",
+        noMoreQuestions: "கேள்விகள் இல்லை"
     }
 };
 
