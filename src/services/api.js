@@ -517,23 +517,21 @@ export const apiService = {
 
   // ---- Classroom / LMS ----
   async getUserInfo() {
-    const response = await authenticatedFetch('/api/users/me');
-    return handleResponse(response);
+    return authenticatedFetch('/api/users/me');
   },
 
   async updateUserRole(role) {
     const formData = new FormData();
     formData.append('role', role);
-    const response = await authenticatedFetch('/api/users/role', {
+    return authenticatedFetch('/api/users/role', {
       method: 'PATCH', body: formData
     });
-    return handleResponse(response);
   },
 
   async listClassrooms() {
-    const response = await authenticatedFetch('/api/classrooms');
-    return handleResponse(response);
+    return authenticatedFetch('/api/classrooms');
   },
+
 
   async createClassroom(name, description = '', docName = '') {
     const formData = new FormData();
