@@ -1707,38 +1707,6 @@ function ChatInterface() {
   );
 }
 
-// Nav Button Component
-const NavButton = ({ icon, label, active, onClick, collapsed }) => (
-  <button
-    onClick={onClick}
-    style={{
-      width: '100%',
-      padding: '12px 16px',
-      background: active ? '#e8f0fe' : 'transparent',
-      border: 'none',
-      borderRadius: '24px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: 500,
-      color: active ? '#1967d2' : '#5f6368',
-      marginBottom: '4px',
-      transition: 'background 0.2s',
-      justifyContent: collapsed ? 'center' : 'flex-start'
-    }}
-    onMouseEnter={(e) => {
-      if (!active) e.currentTarget.style.background = '#f1f3f4';
-    }}
-    onMouseLeave={(e) => {
-      if (!active) e.currentTarget.style.background = 'transparent';
-    }}
-  >
-    <span style={{ fontSize: '18px' }}>{icon}</span>
-    {!collapsed && <span>{label}</span>}
-  </button>
-);
 
 // Message Bubble Component
 const MessageBubble = ({ message, onOpenSource }) => {
