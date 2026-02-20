@@ -18,7 +18,8 @@ export default function LandingPage() {
   const [currentFeature, setCurrentFeature] = useState(0);
   const [hoveredPricing, setHoveredPricing] = useState(null);
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { session } = useAuth();
+  const isAuthenticated = !!session;
 
   const handleStartTrial = () => {
     if (isAuthenticated) { navigate('/chat'); } else { navigate('/login'); }
