@@ -1078,13 +1078,23 @@ import LegalAnalyzer from './components/LegalAnalyzer';
 import AITeacher from './components/AITeacher';
 import MacDock, { TeacherDock } from './components/MacDock';
 import { useAuth } from './contexts/AuthContext';
+import { supabase } from './supabaseClient';
 import { useLanguage } from './contexts/LanguageContext';
 import LanguageSwitcher from './components/LanguageSwitcher';
 
 function ChatInterface() {
   const { t, language } = useLanguage();
   const { userRole } = useAuth();
-  const isTeacher = userRole === 'teacher';
+  // Direct Supabase query as reliable fallback — context may still be null on first render
+  const [localRole, setLocalRole] = useState(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user?.id) return;
+      supabase.from('profiles').select('role').eq('id', session.user.id).single()
+        .then(({ data }) => setLocalRole(data?.role ?? null));
+    });
+  }, []);
+  const isTeacher = userRole === 'teacher' || localRole === 'teacher';
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
   const [showAITeacher, setShowAITeacher] = useState(false);
