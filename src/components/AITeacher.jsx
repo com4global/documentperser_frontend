@@ -490,110 +490,95 @@ const AITeacher = ({ onClose }) => {
     };
 
     // ── Subtitle sync engine ──
-    // Drives currentSentenceIdx based on elapsed wall-clock play time.
-    // WHY wall-clock instead of audio.currentTime?
-    //   • VBR MP3 files make browsers mis-report audio.duration
-    //     (often 2–3× shorter than actual), so all offsets shrink and
-    //     subtitles race through in seconds while audio keeps playing.
-    //   • Wall-clock time is always reliable regardless of codec, CORS,
-    //     caching, or browser quirks.
+    // Uses audio.currentTime mapped against √(wordCount)-weighted offsets.
+    //
+    // The original "wall-clock" approach was a workaround for the backend bug
+    // where Sarvam only generated ~3 sentences of audio (CHUNK_SIZE=1800 was too
+    // big for the API). Now that chunking is fixed at 400 chars, the backend
+    // generates COMPLETE audio for all sentences, so audio.duration is accurate
+    // and audio.currentTime is the best possible sync source.
+    //
+    // Design:
+    //   • Wait for audio.duration to be a sensible value (≥ n sentences × 0.5s)
+    //     before building offsets — avoids reacting to stale NaN / 0 values.
+    //   • Use √(wordCount) weighting so short sentences get a proportionally
+    //     larger slice, preventing them from flashing by.
+    //   • Rebuild offsets on every tick if audio.duration changes (e.g. Chrome
+    //     sometimes updates it as it reads more of the file).
     const startSentenceSync = () => {
         if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
         if (!audioRef.current || ttsSentences.length === 0) return;
 
         const audio = audioRef.current;
-        const sentenceText = (s) => (s && typeof s === 'object' ? s.text || '' : s || '');
+        const n = ttsSentences.length;
 
-        // Count words per sentence (used for relative weighting)
+        // Word count per sentence – proxy for how long the TTS will speak it
+        const sentenceText = (s) => (s && typeof s === 'object' ? s.text || '' : s || '');
         const wordCounts = ttsSentences.map(s =>
             Math.max(sentenceText(s).trim().split(/\s+/).filter(Boolean).length, 1)
         );
-        const totalWords = wordCounts.reduce((a, b) => a + b, 0);
 
-        // Build √(wordCount)-weighted cumulative offsets for `totalDuration` seconds.
-        // √ smoothing gives short sentences proportionally more time so they
-        // don't flash by too fast, while total always equals totalDuration exactly.
+        // Build √(wordCount)-weighted cumulative offsets scaled to totalDuration.
         const buildOffsets = (totalDuration) => {
             const sqrtW = wordCounts.map(w => Math.sqrt(w));
-            const totalSqrtW = sqrtW.reduce((a, b) => a + b, 0);
+            const sumSqrt = sqrtW.reduce((a, b) => a + b, 0);
             let cum = 0;
-            const offsets = wordCounts.map((_, i) => {
+            const offs = wordCounts.map((_, i) => {
                 const o = cum;
-                cum += (sqrtW[i] / totalSqrtW) * totalDuration;
+                cum += (sqrtW[i] / sumSqrt) * totalDuration;
                 return o;
             });
-            offsets.push(totalDuration); // sentinel
-            return offsets;
-        };
-
-        // ── Duration estimate ──
-        // IMPORTANT: NEVER use audio.duration for Sarvam/Tamil MP3 files.
-        // Sarvam generates VBR MP3 via pydub. Browsers calculate VBR duration
-        // from file-size ÷ header-bitrate, which is 3–8× too short for
-        // VBR files without a Xing/Info header. This makes all offsets tiny
-        // and subtitles race through in seconds while the voice is still talking.
-        //
-        // Instead, estimate from word count:
-        //   Sarvam bulbul:v2 Tamil at pace=1.0 ≈ 0.65 seconds per word
-        //   (measured from real audio: 5-word sentence ≈ 3–4 seconds)
-        const getEstimatedDuration = () => {
-            const secsPerWord = 0.65;            // Tamil TTS pace calibrated
-            const minPerSentence = 3.5;          // never shorter than 3.5 s/sentence
-            const byWords = totalWords * secsPerWord;
-            const byFloor = ttsSentences.length * minPerSentence;
-            return Math.max(byWords, byFloor);
+            offs.push(totalDuration); // sentinel
+            return offs;
         };
 
         let offsets = null;
-        let playStartWall = null;    // wall-clock ms when play began
-        let pausedAt = null;         // wall-clock ms when paused (for time correction)
-        let elapsedPausedMs = 0;     // total ms spent paused
+        let lastBuiltDuration = 0;
+
+        // Fallback wall-clock (used only before audio.duration is available)
+        let wallStart = null;
+        const FALLBACK_PER_SENTENCE = 4; // seconds per sentence if no duration yet
 
         sentenceTimerRef.current = setInterval(() => {
-            if (!audio) return;
+            if (!audio || audio.paused) return;
 
-            if (audio.paused) {
-                // Record when we entered pause (once)
-                if (pausedAt === null) pausedAt = Date.now();
-                return;
-            }
+            const dur = audio.duration;
+            const durReady = dur && isFinite(dur) && dur >= n * 0.5; // at least 0.5s/sentence
 
-            // Resumed from pause: accumulate how long we were paused
-            if (pausedAt !== null) {
-                elapsedPausedMs += Date.now() - pausedAt;
-                pausedAt = null;
-            }
-
-            // Initialise on first live tick
-            if (!offsets) {
-                const est = getEstimatedDuration();
-                offsets = buildOffsets(est);
-                playStartWall = Date.now();
-                elapsedPausedMs = 0;
-                // ── Diagnostic (remove after confirming sync is correct) ──
-                console.log('[TTS Sync] audio.duration (browser/VBR):', audio.duration,
-                    '| totalWords:', totalWords,
-                    '| estimated total:', est.toFixed(1) + 's',
-                    '| sentences:', ttsSentences.length,
+            // (Re-)build offsets when we get a reliable duration or duration changes
+            if (durReady && Math.abs(dur - lastBuiltDuration) > 0.5) {
+                offsets = buildOffsets(dur);
+                lastBuiltDuration = dur;
+                wallStart = null; // switch from wall-clock to currentTime mode
+                console.log('[TTS Sync] audio.duration:', dur.toFixed(1) + 's',
+                    '| sentences:', n, '| secs/sentence:', (dur / n).toFixed(1),
                     '| offsets:', offsets.map(o => o.toFixed(1)));
             }
 
-            // Elapsed play-time in seconds (wall-clock minus paused time)
-            const totalDur = offsets[offsets.length - 1];
-            const elapsedSec = (Date.now() - playStartWall - elapsedPausedMs) / 1000;
-            const ct = Math.min(elapsedSec, totalDur * 0.9999); // clamp below sentinel
-
-            // Binary search for the current subtitle window
-            let idx = ttsSentences.length - 1;
-            for (let i = 0; i < offsets.length - 1; i++) {
-                if (ct >= offsets[i] && ct < offsets[i + 1]) {
-                    idx = i;
-                    break;
-                }
+            // If still no reliable duration, use wall-clock as rough guide
+            if (!offsets) {
+                if (!wallStart) wallStart = Date.now();
+                const elSec = (Date.now() - wallStart) / 1000;
+                const roughDur = n * FALLBACK_PER_SENTENCE;
+                offsets = buildOffsets(roughDur);
+                lastBuiltDuration = roughDur;
             }
-            setCurrentSentenceIdx(Math.min(idx, ttsSentences.length - 1));
-        }, 200); // 200 ms is smooth enough and lower CPU than 100 ms
+
+            // Map currentTime (or wall-clock) to a sentence index
+            const ct = durReady ? audio.currentTime
+                : Math.min((Date.now() - (wallStart || Date.now())) / 1000,
+                    lastBuiltDuration * 0.9999);
+
+            let idx = n - 1; // default: stay on last sentence
+            for (let i = 0; i < offsets.length - 1; i++) {
+                if (ct >= offsets[i] && ct < offsets[i + 1]) { idx = i; break; }
+            }
+            setCurrentSentenceIdx(Math.min(idx, n - 1));
+        }, 150); // 150 ms — responsive but not excessive
     };
+
+
+
 
 
 
@@ -1240,12 +1225,14 @@ const AITeacher = ({ onClose }) => {
                                 onEnded={() => {
                                     setIsTtsPlaying(false);
                                     if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
-                                    // Do NOT force currentSentenceIdx to last here —
-                                    // the sync loop already set it correctly as audio played.
-                                    // Trigger end-of-session Q&A (use ref — state closure is stale)
-                                    if (!isAskingDoubtRef.current) {
-                                        triggerEndOfSessionQA();
-                                    }
+                                    // Show the very last subtitle so user can read it,
+                                    // then trigger Q&A after a short pause
+                                    setCurrentSentenceIdx(ttsSentences.length - 1);
+                                    setTimeout(() => {
+                                        if (!isAskingDoubtRef.current) {
+                                            triggerEndOfSessionQA();
+                                        }
+                                    }, 3000); // 3-second reading pause before Q&A
                                 }}
                                 onPlay={() => { setIsTtsPlaying(true); startSentenceSync(); }}
                                 onPause={() => { setIsTtsPlaying(false); }}
