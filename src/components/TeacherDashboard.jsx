@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { supabase } from '../supabaseClient';
 import '../Styles/TeacherDashboard.css';
 
 export default function TeacherDashboard() {
+    const navigate = useNavigate();
+    const handleSignOut = async () => { await supabase.auth.signOut(); navigate('/'); };
     const [view, setView] = useState('classrooms'); // 'classrooms' | 'detail' | 'progress'
     const [classrooms, setClassrooms] = useState([]);
     const [selectedClassroom, setSelectedClassroom] = useState(null);
@@ -73,12 +77,14 @@ export default function TeacherDashboard() {
 
     const handleDeleteClassroom = async (cls) => {
         if (!window.confirm(`Delete "${cls.name}"? This cannot be undone.`)) return;
+        // Optimistic remove — no page flash
+        setClassrooms(prev => prev.filter(c => c.id !== cls.id));
         try {
             await apiService.deleteClassroom(cls.id);
-            loadClassrooms();
         } catch (e) {
             console.error('deleteClassroom error:', e);
             alert('Failed to delete: ' + e.message);
+            loadClassrooms(); // restore on failure
         }
     };
 
@@ -374,12 +380,19 @@ export default function TeacherDashboard() {
     return (
         <div className="teacher-dashboard">
             <div className="td-topbar">
-                <h1>🎓 Teacher Dashboard</h1>
-                {view !== 'classrooms' && (
-                    <button className="td-btn td-btn-ghost" onClick={() => setView('classrooms')}>
-                        All Classrooms
-                    </button>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <h1>🎓 Teacher Dashboard</h1>
+                    {view !== 'classrooms' && (
+                        <button className="td-btn td-btn-ghost" onClick={() => setView('classrooms')}>
+                            ← All Classrooms
+                        </button>
+                    )}
+                </div>
+                <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button className="td-btn td-btn-ghost" onClick={() => navigate('/')}>🏠 Home</button>
+                    <button className="td-btn td-btn-ghost" onClick={() => navigate('/chat')}>💬 Chat</button>
+                    <button className="td-btn td-btn-ghost" style={{ color: '#ff8888' }} onClick={handleSignOut}>⎋ Sign Out</button>
+                </nav>
             </div>
             <div className="td-content">
                 {view === 'classrooms' && renderClassroomsList()}
