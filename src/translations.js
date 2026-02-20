@@ -18,7 +18,7 @@ export const translations = {
         help: "Help",
 
         // Chat Interface
-        welcomeMessage: "Hello! I'm your Document Assistant. Ask me anything about your uploaded documents, contracts, or agreements.",
+        welcomeMessage: "Hello! I'm your Document Assistant. Ask me anything about your uploaded documents, school textbooks, contracts, or agreements.",
         chatPlaceholder: "Ask me about HR policies, benefits, or procedures...",
         send: "Send",
         sending: "Sending...",
@@ -255,7 +255,7 @@ export const translations = {
         help: "உதவி",
 
         // Chat Interface
-        welcomeMessage: "வணக்கம்! நான் உங்கள் ஆவண உதவியாளர். உங்கள் பதிவேற்றிய ஆவணங்கள், ஒப்பந்தங்கள் பற்றி எதையும் கேளுங்கள்.",
+        welcomeMessage: "வணக்கம்! நான் உங்கள் ஆவண உதவியாளர். உங்கள் பதிவேற்றிய ஆவணங்கள், பள்ளி பாடப்புத்தகங்கள், ஒப்பந்தங்கள் பற்றி எதையும் கேளுங்கள்.",
         chatPlaceholder: "எச்.ஆர் கொள்கைகள், சலுகைகள் அல்லது நடைமுறைகள் பற்றி கேளுங்கள்...",
         send: "அனுப்பு",
         sending: "அனுப்புகிறது...",

@@ -83,6 +83,9 @@ export default function StudentDashboard() {
         return Math.round((completed / allTopics.length) * 100);
     };
 
+    // Color class based on % for progress bars
+    const pctColor = (pct) => pct >= 67 ? 'high' : pct >= 34 ? 'mid' : 'low';
+
     const renderClassroomsList = () => (
         <div className="sd-section">
             {/* Join section */}
@@ -155,7 +158,12 @@ export default function StudentDashboard() {
 
                 {/* Overall progress bar */}
                 <div className="sd-progress-bar-outer">
-                    <div className="sd-progress-bar-inner" style={{ width: `${overall}%` }}></div>
+                    <div className={`sd-progress-bar-inner ${pctColor(overall)}`} style={{ width: `${overall}%` }}></div>
+                </div>
+                <div className="sd-progress-label">
+                    <span>0%</span>
+                    <span className={`pct ${pctColor(overall)}`}>{overall}% Complete</span>
+                    <span>100%</span>
                 </div>
 
                 {/* Assignments / Chapters */}
@@ -175,8 +183,13 @@ export default function StudentDashboard() {
                                         Due: {new Date(a.due_date).toLocaleDateString()}
                                     </span>
                                 )}
-                                <div className="sd-progress-bar-outer" style={{ marginBottom: 12 }}>
-                                    <div className="sd-progress-bar-inner" style={{ width: `${pct}%` }}></div>
+                                <div className="sd-progress-bar-outer" style={{ marginBottom: 4 }}>
+                                    <div className={`sd-progress-bar-inner ${pctColor(pct)}`} style={{ width: `${pct}%` }}></div>
+                                </div>
+                                <div className="sd-progress-label" style={{ marginBottom: 12 }}>
+                                    <span>0%</span>
+                                    <span className={`pct ${pctColor(pct)}`}>{pct}% Complete</span>
+                                    <span>100%</span>
                                 </div>
 
                                 {/* Topics */}
