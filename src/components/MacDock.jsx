@@ -2,29 +2,31 @@ import React, { useState } from 'react';
 import '../Styles/MacDock.css';
 
 // ── Right-side dock items ─────────────────────────────────────────────────
-const DOCK_ITEMS = [
-    { id: 'newchat', emoji: '✨', label: 'New Chat', gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
-    { id: 'chat', emoji: '💬', label: 'Chat', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
-    { id: 'upload', emoji: '📤', label: 'Upload', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
-    { id: 'admin', emoji: '⚙️', label: 'Admin', gradient: 'linear-gradient(135deg,#3b82f6,#0ea5e9)' },
-    { id: 'legal', emoji: '⚖️', label: 'Legal', gradient: 'linear-gradient(135deg,#8b5cf6,#ec4899)' },
-    { id: 'teacher', emoji: '🎓', label: 'AI Teacher', gradient: 'linear-gradient(135deg,#f97316,#ef4444)' },
-    { id: 'logout', emoji: '🚪', label: 'Logout', gradient: 'linear-gradient(135deg,#6b7280,#4b5563)' },
+const ALL_DOCK_ITEMS = [
+    { id: 'newchat', emoji: '✨', label: 'New Chat', gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)', roles: ['teacher', 'student', 'all'] },
+    { id: 'chat', emoji: '💬', label: 'Chat', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', roles: ['teacher', 'student', 'all'] },
+    { id: 'upload', emoji: '📤', label: 'Upload', gradient: 'linear-gradient(135deg,#10b981,#059669)', roles: ['teacher', 'student', 'all'] },
+    { id: 'admin', emoji: '⚙️', label: 'Admin', gradient: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', roles: ['teacher', 'all'] },   // teacher only
+    { id: 'legal', emoji: '⚖️', label: 'Legal', gradient: 'linear-gradient(135deg,#8b5cf6,#ec4899)', roles: ['teacher', 'all'] },   // teacher only
+    { id: 'teacher', emoji: '🎓', label: 'AI Teacher', gradient: 'linear-gradient(135deg,#f97316,#ef4444)', roles: ['teacher', 'student', 'all'] },
+    { id: 'logout', emoji: '🚪', label: 'Logout', gradient: 'linear-gradient(135deg,#6b7280,#4b5563)', roles: ['teacher', 'student', 'all'] },
 ];
 
 /**
  * MacDock — macOS-style right-side vertical dock.
  *
  * Props:
- *   activeView       – 'chat' | 'admin' | 'legal' | 'teacher'
- *   onNewChat        – () => void
- *   onNavigate       – (view: string) => void
- *   onUploadClick    – () => void
- *   onLogout         – () => void
- *   uploadedCount    – number
+ *   activeView    – 'chat' | 'admin' | 'legal' | 'teacher'
+ *   role          – 'teacher' | 'student' | null  (filters visible items)
+ *   onNewChat     – () => void
+ *   onNavigate    – (view: string) => void
+ *   onUploadClick – () => void
+ *   onLogout      – () => void
+ *   uploadedCount – number
  */
 export default function MacDock({
     activeView = 'chat',
+    role = 'all',
     onNewChat,
     onNavigate,
     onUploadClick,
@@ -33,6 +35,11 @@ export default function MacDock({
 }) {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [bouncingId, setBouncingId] = useState(null);
+
+    // Filter items by role
+    const DOCK_ITEMS = ALL_DOCK_ITEMS.filter(
+        item => item.roles.includes(role) || item.roles.includes('all')
+    );
 
     const getScale = (index) => {
         if (hoveredIndex === null) return 1;
@@ -81,11 +88,9 @@ export default function MacDock({
                             onMouseEnter={() => setHoveredIndex(index)}
                             onMouseLeave={() => setHoveredIndex(null)}
                         >
-                            {/* Tooltip — to the left */}
                             <div className={`dock-tooltip ${hoveredIndex === index ? 'dock-tooltip--visible' : ''}`}>
                                 {item.label}
                             </div>
-
                             <button
                                 className={`dock-item ${bouncing ? 'dock-item--bounce' : ''}`}
                                 style={{ transform: `scale(${scale}) translateX(${tx}px)`, background: item.gradient }}
@@ -97,8 +102,6 @@ export default function MacDock({
                                     <span className="dock-badge">{uploadedCount > 9 ? '9+' : uploadedCount}</span>
                                 )}
                             </button>
-
-                            {/* Active dot — to the right */}
                             {active && <div className="dock-active-dot" />}
                         </div>
                     );
@@ -109,22 +112,26 @@ export default function MacDock({
     );
 }
 
-// ── Teacher Dock — left-side, teacher-only ────────────────────────────────
-const TEACHER_DOCK_ITEMS = [
-    { id: 'classroom', emoji: '🏫', label: 'My Classroom', gradient: 'linear-gradient(135deg,#10b981,#065f46)' },
-];
+// ── Left-side Dock (teacher AND student) ─────────────────────────────────
+// Teacher → 🏫 My Classroom → /teacher
+// Student → 🏫 My Classroom → /student
+const LEFT_DOCK_ITEMS = {
+    teacher: [{ id: 'classroom', emoji: '🏫', label: 'My Classroom', gradient: 'linear-gradient(135deg,#10b981,#065f46)' }],
+    student: [{ id: 'classroom', emoji: '🏫', label: 'My Classroom', gradient: 'linear-gradient(135deg,#6366f1,#3730a3)' }],
+};
 
 /**
- * TeacherDock — left-side vertical dock, teacher-only.
- * Same glassmorphism as MacDock but pinned to the left.
- * Tooltip appears to the RIGHT of the icon.
+ * SideDock — left-side vertical dock for teachers AND students.
+ * Shows a single "My Classroom" button that routes to the correct dashboard.
  *
  * Props:
- *   onClassroom — () => void  navigate to /teacher
+ *   role        – 'teacher' | 'student'
+ *   onClassroom – () => void
  */
-export function TeacherDock({ onClassroom }) {
+export function SideDock({ role = 'student', onClassroom }) {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [bouncingId, setBouncingId] = useState(null);
+    const items = LEFT_DOCK_ITEMS[role] || LEFT_DOCK_ITEMS.student;
 
     const getScale = (index) => {
         if (hoveredIndex === null) return 1;
@@ -139,13 +146,11 @@ export function TeacherDock({ onClassroom }) {
 
     return (
         <div className="mac-dock-wrapper teacher-dock-wrapper">
-            {/* reflection sits to the LEFT of the shelf */}
             <div className="mac-dock-reflection teacher-dock-reflection" />
             <div className="mac-dock">
-                {TEACHER_DOCK_ITEMS.map((item, index) => {
+                {items.map((item, index) => {
                     const scale = getScale(index);
                     const bouncing = bouncingId === item.id;
-                    /* magnify toward right (into the screen) */
                     const tx = scale > 1 ? ((scale - 1) * 16) : 0;
 
                     return (
@@ -167,8 +172,6 @@ export function TeacherDock({ onClassroom }) {
                             >
                                 <span className="dock-item-emoji" role="img" aria-hidden="true">{item.emoji}</span>
                             </button>
-
-                            {/* Tooltip — to the RIGHT for left dock */}
                             <div className={`dock-tooltip teacher-dock-tooltip ${hoveredIndex === index ? 'dock-tooltip--visible' : ''}`}>
                                 {item.label}
                             </div>
@@ -178,4 +181,9 @@ export function TeacherDock({ onClassroom }) {
             </div>
         </div>
     );
+}
+
+// Keep TeacherDock as an alias for backwards compatibility
+export function TeacherDock({ onClassroom }) {
+    return <SideDock role="teacher" onClassroom={onClassroom} />;
 }

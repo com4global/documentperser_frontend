@@ -1076,7 +1076,7 @@ import apiService from './services/api';
 import AdminDashboard from './components/AdminDashboard';
 import LegalAnalyzer from './components/LegalAnalyzer';
 import AITeacher from './components/AITeacher';
-import MacDock, { TeacherDock } from './components/MacDock';
+import MacDock, { SideDock } from './components/MacDock';
 import { useAuth } from './contexts/AuthContext';
 import { supabase } from './supabaseClient';
 import { useLanguage } from './contexts/LanguageContext';
@@ -1602,14 +1602,18 @@ function ChatInterface() {
         </>
       </div>
 
-      {/* Teacher Dock — left side, only for teachers */}
-      {isTeacher && (
-        <TeacherDock onClassroom={() => navigate('/teacher')} />
+      {/* Side Dock — left, for teachers AND students */}
+      {(localRole === 'teacher' || localRole === 'student') && (
+        <SideDock
+          role={localRole}
+          onClassroom={() => navigate(localRole === 'teacher' ? '/teacher' : '/student')}
+        />
       )}
 
       {/* macOS Dock — fixed at bottom */}
       <MacDock
         activeView={activeView}
+        role={localRole || 'all'}
         onNewChat={startNewChat}
         onNavigate={handleDockNavigate}
         onUploadClick={() => fileInputRef.current?.click()}

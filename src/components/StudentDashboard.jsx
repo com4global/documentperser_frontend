@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { supabase } from '../supabaseClient';
 import '../Styles/TeacherDashboard.css'; // shared styles
 
 export default function StudentDashboard() {
+    const navigate = useNavigate();
+    const handleSignOut = async () => { await supabase.auth.signOut(); navigate('/'); };
     const [view, setView] = useState('classrooms'); // 'classrooms' | 'classroom'
     const [classrooms, setClassrooms] = useState([]);
     const [selectedClassroom, setSelectedClassroom] = useState(null);
@@ -223,12 +227,18 @@ export default function StudentDashboard() {
     return (
         <div className="student-dashboard">
             <div className="sd-topbar">
-                <h1>📖 My Learning</h1>
-                {view !== 'classrooms' && (
-                    <button className="sd-btn sd-btn-ghost" onClick={() => setView('classrooms')}>
-                        All Classrooms
-                    </button>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <h1>📖 My Learning</h1>
+                    {view !== 'classrooms' && (
+                        <button className="sd-btn sd-btn-ghost" onClick={() => setView('classrooms')}>
+                            ← All Classrooms
+                        </button>
+                    )}
+                </div>
+                <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button className="sd-btn sd-btn-ghost" onClick={() => navigate('/chat')}>💬 Chat</button>
+                    <button className="sd-btn sd-btn-ghost" style={{ color: '#ff8888' }} onClick={handleSignOut}>⎋ Sign Out</button>
+                </nav>
             </div>
             <div className="sd-content">
                 {view === 'classrooms' && renderClassroomsList()}
