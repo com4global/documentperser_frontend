@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EdTech AI Learning</string>
+    <string name="title_activity_main">EdTech AI Learning</string>
+    <string name="package_name">com.zenzee.edtech</string>
+    <string name="custom_url_scheme">com.zenzee.edtech</string>
+</resources>

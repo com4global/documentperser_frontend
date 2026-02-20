@@ -1,0 +1,229 @@
+/* ─────────────────────────────────────────────
+   MacDock.css  –  Right-side vertical dock
+───────────────────────────────────────────── */
+
+/* ── Wrapper: pinned to right-center ── */
+.mac-dock-wrapper {
+    position: fixed;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: row;
+    /* dock shelf + reflection side by side */
+    align-items: center;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* ── Dock shelf (vertical) ── */
+.mac-dock {
+    pointer-events: all;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 10px;
+    background: rgba(255, 255, 255, 0.30);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 20px;
+    overflow: visible;
+    /* allow tooltip to escape bounds */
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.14),
+        0 2px 8px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+/* ── Dock reflection (horizontal stripe to right) ── */
+.mac-dock-reflection {
+    width: 7px;
+    height: 60%;
+    background: linear-gradient(to right,
+            rgba(255, 255, 255, 0.18),
+            transparent);
+    border-radius: 0 8px 8px 0;
+    filter: blur(2px);
+}
+
+/* ── Per-icon wrapper ── */
+.dock-item-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow: visible;
+    /* tooltip must escape this too */
+}
+
+/* ── Icon button ── */
+.dock-item {
+    width: 48px;
+    height: 48px;
+    border-radius: 13px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    /* magnification via JS transform */
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: right center;
+    /* magnify toward center of screen */
+    box-shadow:
+        0 3px 10px rgba(0, 0, 0, 0.20),
+        0 1px 3px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    outline: none;
+}
+
+.dock-item:active {
+    filter: brightness(0.88);
+}
+
+/* Crisp glossy sheen – NO blur filter on the icon itself */
+.dock-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 13px;
+    background: linear-gradient(165deg,
+            rgba(255, 255, 255, 0.50) 0%,
+            rgba(255, 255, 255, 0.10) 50%,
+            transparent 100%);
+    pointer-events: none;
+}
+
+.dock-item-emoji {
+    font-size: 24px;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+    /* no filter / no blur — keeps emoji sharp */
+    user-select: none;
+    image-rendering: crisp-edges;
+}
+
+/* ── Bounce animation ── */
+.dock-item--bounce {
+    animation: dockBounce 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes dockBounce {
+    0% {
+        transform: translateX(0);
+    }
+
+    30% {
+        transform: translateX(-14px);
+    }
+
+    55% {
+        transform: translateX(0);
+    }
+
+    75% {
+        transform: translateX(-6px);
+    }
+
+    90% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* ── Tooltip — appears to the LEFT of the icon ── */
+.dock-tooltip {
+    position: absolute;
+    right: calc(100% + 12px);
+    /* sits to the LEFT of the icon */
+    top: 50%;
+    transform: translateY(-50%) translateX(6px);
+    background: rgba(20, 20, 20, 0.90);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: -apple-system, 'SF Pro Text', 'Segoe UI', sans-serif;
+    letter-spacing: 0.01em;
+    padding: 5px 11px;
+    border-radius: 8px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 2000;
+    /* above everything */
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* arrow pointing right */
+.dock-tooltip::after {
+    content: '';
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 5px solid transparent;
+    border-left-color: rgba(20, 20, 20, 0.88);
+}
+
+.dock-tooltip--visible {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+/* ── Active indicator dot — appears to the right of icon ── */
+.dock-active-dot {
+    width: 5px;
+    height: 5px;
+    background: rgba(99, 102, 241, 0.95);
+    border-radius: 50%;
+    margin-left: 5px;
+    box-shadow: 0 0 6px rgba(99, 102, 241, 0.7);
+}
+
+/* ── Upload count badge ── */
+.dock-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 3px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: -apple-system, 'SF Pro Text', 'Segoe UI', sans-serif;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.5);
+    z-index: 2;
+}
+
+/* ── Responsive: smaller on narrow screens ── */
+@media (max-width: 600px) {
+    .mac-dock-wrapper {
+        right: 8px;
+    }
+
+    .dock-item {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+    }
+
+    .dock-item-emoji {
+        font-size: 20px;
+    }
+}

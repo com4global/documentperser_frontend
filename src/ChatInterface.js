@@ -1071,12 +1071,12 @@
 import { APP_CONFIG } from './utils/constants';
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiService from './services/api';
 import AdminDashboard from './components/AdminDashboard';
 import LegalAnalyzer from './components/LegalAnalyzer';
 import AITeacher from './components/AITeacher';
+import MacDock from './components/MacDock';
 import { useLanguage } from './contexts/LanguageContext';
 import LanguageSwitcher from './components/LanguageSwitcher';
 
@@ -1086,6 +1086,7 @@ function ChatInterface() {
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
   const [showAITeacher, setShowAITeacher] = useState(false);
   const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
+
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -1096,9 +1097,16 @@ function ChatInterface() {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
+
+  // Upload state
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedSources, setUploadedSources] = useState([]);
+  const [uploadToast, setUploadToast] = useState(null);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -1178,169 +1186,101 @@ function ChatInterface() {
     }]);
   };
 
+  // ── Upload handlers ──────────────────────────────────────────────
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ['.pdf','.xlsx','.xls','.csv','.txt','.docx','.doc','.xml',
+                     '.mp4','.avi','.mov','.mp3','.wav','.jpg','.png','.jpeg'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowed.includes(ext)) {
+      setUploadToast({ type: 'error', msg: `Unsupported file type: ${ext}` });
+      setTimeout(() => setUploadToast(null), 3500);
+      return;
+    }
+    setSelectedFile(file);
+    setUploadProgress(0);
+    // reset the input so the same file can be re-selected if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile || uploading) return;
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      await apiService.uploadFile(selectedFile, (pct) => setUploadProgress(pct));
+      setUploadedSources(prev => [...prev, selectedFile.name]);
+      setUploadToast({ type: 'success', msg: `✅ "${selectedFile.name}" uploaded!` });
+      setTimeout(() => setUploadToast(null), 3500);
+      setSelectedFile(null);
+    } catch (err) {
+      setUploadToast({ type: 'error', msg: `Upload failed: ${err.message}` });
+      setTimeout(() => setUploadToast(null), 5000);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setUploadProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // ── Derive current active view for dock ──
+  const activeView = showAdminPanel ? 'admin'
+    : showLegalAnalyzer ? 'legal'
+    : showAITeacher ? 'teacher'
+    : 'chat';
+
+  const handleDockNavigate = (view) => {
+    setShowAdminPanel(view === 'admin');
+    setShowLegalAnalyzer(view === 'legal');
+    setShowAITeacher(view === 'teacher');
+  };
+
   return (
     <div style={{
       display: 'flex',
+      flexDirection: 'column',
       height: '100vh',
-      background: '#f8f9fa',
-      fontFamily: 'Google Sans, Roboto, sans-serif'
+      background: 'linear-gradient(135deg, #f0f4ff 0%, #faf5ff 50%, #f0fdf4 100%)',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif'
     }}>
-      
-      {/* SIDEBAR */}
-      <div style={{
-        width: sidebarCollapsed ? '72px' : '260px',
-        background: '#ffffff',
-        borderRight: '1px solid #e8eaed',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'width 0.3s ease',
-        position: 'relative'
-      }}>
-        {/* Logo & Toggle */}
-        <div style={{
-          padding: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          {!sidebarCollapsed && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              fontSize: '20px',
-              fontWeight: 500,
-              color: '#202124'
-            }}>
-              <span style={{ fontSize: '28px' }}>🚀</span>
-              {t('appName')}
-            </div>
-          )}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '8px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f3f4'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-          >
-            <span style={{ fontSize: '20px' }}>☰</span>
-          </button>
-        </div>
 
-        {/* New Chat Button */}
-        <div style={{ padding: '8px 16px' }}>
-          <button
-            onClick={startNewChat}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              background: 'none',
-              border: '1px solid #dadce0',
-              borderRadius: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: '#202124',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f8f9fa';
-              e.currentTarget.style.boxShadow = '0 1px 2px rgba(60,64,67,0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'none';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <span style={{ fontSize: '20px' }}>✨</span>
-            {!sidebarCollapsed && <span>{t('newChat')}</span>}
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <div style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
-          <NavButton
-            icon="💬"
-            label={t('navChat')}
-            active={!showAdminPanel}
-            onClick={() => setShowAdminPanel(false)}
-            collapsed={sidebarCollapsed}
-          />
-          <NavButton
-            icon="⚙️"
-            label={t('navAdmin')}
-            active={showAdminPanel}
-            onClick={() => setShowAdminPanel(true)}
-            collapsed={sidebarCollapsed}
-          />
-          <NavButton
-            icon="⚖️"
-            label={t('navLegal')}
-            active={showLegalAnalyzer}
-            onClick={() => setShowLegalAnalyzer(true)}
-            collapsed={sidebarCollapsed}
-          />
-          <NavButton
-            icon="🎓"
-            label={t('navAITeacher') || 'AI Teacher'}
-            active={showAITeacher}
-            onClick={() => setShowAITeacher(true)}
-            collapsed={sidebarCollapsed}
-          />
-        </div>
-
-        {/* Bottom Actions */}
-        <div style={{ padding: '8px', borderTop: '1px solid #e8eaed' }}>
-          <NavButton
-            icon="🚪"
-            label={t('navLogout')}
-            onClick={handleLogout}
-            collapsed={sidebarCollapsed}
-          />
-        </div>
-      </div>
-
-      {/* MAIN CONTENT */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        
-        {/* Chat Interface */}
+      {/* MAIN CONTENT — full width */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
         <>
-          {/* Chat Header */}
+          {/* Chat Header — polished gradient */}
           <div style={{
-            padding: '16px 24px',
-            background: '#ffffff',
-            borderBottom: '1px solid #e8eaed',
+            padding: '18px 28px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #a855f7 100%)',
+            boxShadow: '0 4px 20px rgba(99,102,241,0.25)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            flexShrink: 0
           }}>
-            <div>
-              <h1 style={{
-                margin: 0,
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '42px', height: '42px',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(8px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '22px',
-                fontWeight: 400,
-                color: '#202124'
-              }}>
-                {t('subTitle')}
-              </h1>
-              <p style={{
-                margin: '4px 0 0 0',
-                fontSize: '13px',
-                color: '#5f6368'
-              }}>
-                {t('poweredBy')}
-              </p>
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)'
+              }}>🚀</div>
+              <div>
+                <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                  {t('subTitle')}
+                </h1>
+                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.72)', fontWeight: 400 }}>
+                  {t('poweredBy')}
+                </p>
+              </div>
             </div>
             <LanguageSwitcher />
           </div>
@@ -1352,7 +1292,9 @@ function ChatInterface() {
             padding: '24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '24px'
+            gap: '24px',
+            paddingBottom: '24px',
+            paddingRight: '82px'   /* clears the right-side dock */
           }}>
             {messages.map((msg) => (
               <MessageBubble
@@ -1399,19 +1341,125 @@ function ChatInterface() {
             background: '#ffffff',
             borderTop: '1px solid #e8eaed'
           }}>
+            {/* Toast notification */}
+            {uploadToast && (
+              <div style={{
+                maxWidth: '800px',
+                margin: '0 auto 10px',
+                padding: '10px 16px',
+                borderRadius: '12px',
+                fontSize: '13px',
+                fontWeight: 500,
+                background: uploadToast.type === 'success' ? '#ecfdf5' : '#fef2f2',
+                color: uploadToast.type === 'success' ? '#065f46' : '#991b1b',
+                border: `1px solid ${uploadToast.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                animation: 'slideDown 0.25s ease'
+              }}>
+                {uploadToast.msg}
+              </div>
+            )}
+
             <form onSubmit={handleSendMessage} style={{
               maxWidth: '800px',
               margin: '0 auto',
               position: 'relative'
             }}>
+
+              {/* File chip — shown when a file is selected */}
+              {selectedFile && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginBottom: '8px',
+                  padding: '8px 14px',
+                  background: '#f0f4ff',
+                  borderRadius: '12px',
+                  border: '1px solid #c7d7fd',
+                  fontSize: '13px',
+                  color: '#3730a3'
+                }}>
+                  <span style={{ fontSize: '18px' }}>📎</span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                    {selectedFile.name}
+                    <span style={{ color: '#6b7280', fontWeight: 400, marginLeft: '6px' }}>
+                      ({(selectedFile.size / 1024).toFixed(0)} KB)
+                    </span>
+                  </span>
+
+                  {/* Progress bar */}
+                  {uploading ? (
+                    <div style={{ flex: 1, height: '4px', background: '#e0e7ff', borderRadius: '4px', overflow: 'hidden', maxWidth: '120px' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${uploadProgress}%`,
+                        background: 'linear-gradient(90deg, #667eea, #764ba2)',
+                        borderRadius: '4px',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleFileUpload}
+                      style={{
+                        padding: '4px 12px',
+                        background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 600
+                      }}
+                    >
+                      Upload
+                    </button>
+                  )}
+
+                  {!uploading && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#6b7280',
+                        fontSize: '16px',
+                        lineHeight: 1,
+                        padding: '0 2px'
+                      }}
+                      title="Remove file"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.xlsx,.xls,.csv,.txt,.docx,.doc,.xml,.mp4,.avi,.mov,.mp3,.wav,.jpg,.png,.jpeg"
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+                id="chat-file-input"
+              />
+
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 background: '#f1f3f4',
                 borderRadius: '24px',
-                padding: '4px 4px 4px 20px',
+                padding: '4px 4px 4px 8px',
                 border: '1px solid transparent',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                gap: '4px'
               }}
               onFocus={(e) => {
                 e.currentTarget.style.background = '#ffffff';
@@ -1424,6 +1472,34 @@ function ChatInterface() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
               >
+                {/* Paperclip / Attach button */}
+                <button
+                  type="button"
+                  title="Attach a document"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: uploading ? 'not-allowed' : 'pointer',
+                    padding: '8px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#5f6368',
+                    transition: 'all 0.2s',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => { if (!uploading) e.currentTarget.style.background = '#e8eaed'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                >
+                  {/* Paperclip SVG */}
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                </button>
+
                 <input
                   type="text"
                   value={inputValue}
@@ -1437,9 +1513,38 @@ function ChatInterface() {
                     outline: 'none',
                     fontSize: '16px',
                     color: '#202124',
-                    padding: '12px 0'
+                    padding: '12px 4px'
                   }}
                 />
+
+                {/* Sources counter badge */}
+                {uploadedSources.length > 0 && (
+                  <div
+                    title={`Uploaded: ${uploadedSources.join(', ')}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 10px',
+                      background: 'linear-gradient(135deg, #667eea22, #764ba222)',
+                      border: '1px solid #667eea44',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#5b44ca',
+                      whiteSpace: 'nowrap',
+                      cursor: 'default',
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                    {uploadedSources.length} {uploadedSources.length === 1 ? 'source' : 'sources'}
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={loading || !inputValue.trim()}
@@ -1454,7 +1559,8 @@ function ChatInterface() {
                     justifyContent: 'center',
                     cursor: inputValue.trim() ? 'pointer' : 'not-allowed',
                     transition: 'all 0.2s',
-                    fontSize: '20px'
+                    fontSize: '20px',
+                    flexShrink: 0
                   }}
                   onMouseEnter={(e) => {
                     if (inputValue.trim()) {
@@ -1482,6 +1588,16 @@ function ChatInterface() {
           </div>
         </>
       </div>
+
+      {/* macOS Dock — fixed at bottom */}
+      <MacDock
+        activeView={activeView}
+        onNewChat={startNewChat}
+        onNavigate={handleDockNavigate}
+        onUploadClick={() => fileInputRef.current?.click()}
+        onLogout={handleLogout}
+        uploadedCount={uploadedSources.length}
+      />
 
       {/* Admin Panel Modal */}
       <AnimatePresence>
