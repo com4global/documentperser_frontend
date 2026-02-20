@@ -482,9 +482,10 @@ const AITeacher = ({ onClose }) => {
         }
     };
 
-    // Sync subtitles with audio playback
-    // Uses character-count weighting so longer sentences stay visible longer,
-    // matching TTS speech timing much more accurately than linear division.
+    // Sync subtitles with audio playback.
+    // Uses WORD-COUNT weighting with a minimum-time floor so each sentence
+    // gets a fair slice of the audio — works correctly for Tamil and other
+    // Indian languages where character count ≠ speech duration.
     const startSentenceSync = () => {
         if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
         if (!audioRef.current || ttsSentences.length === 0) return;
@@ -494,16 +495,44 @@ const AITeacher = ({ onClose }) => {
         // Helper: get the plain text from a sentence item (string OR enriched object)
         const sentenceText = (s) => (s && typeof s === 'object' ? s.text || '' : s || '');
 
-        // Build cumulative time offsets weighted by character count
+        // Build cumulative time offsets weighted by word count, with a minimum
+        // display floor so short sentences never vanish before they can be read.
         const buildTimeOffsets = (duration) => {
-            const totalChars = ttsSentences.reduce((sum, s) => sum + (sentenceText(s).length || 1), 0);
+            const MIN_SECS = 2.5;   // every sentence shows for at least 2.5 s
+            const n = ttsSentences.length;
+
+            // Word count per sentence (better proxy for speech duration than chars)
+            const wordCounts = ttsSentences.map(s =>
+                Math.max(sentenceText(s).trim().split(/\s+/).filter(Boolean).length, 1)
+            );
+            const totalWords = wordCounts.reduce((a, b) => a + b, 0);
+
+            // Raw proportional durations — each sentence's "fair share" of audio time
+            const raw = wordCounts.map(w => (w / totalWords) * duration);
+
+            // Apply minimum floor: if raw < MIN_SECS, clamp up and steal from
+            // larger slots proportionally so total always equals duration.
+            let excess = 0;
+            const clamped = raw.map(t => {
+                if (t < MIN_SECS) { excess += MIN_SECS - t; return MIN_SECS; }
+                return t;
+            });
+
+            // Redistribute excess by shrinking the larger slots
+            const largeTotal = clamped.reduce((sum, t, i) => sum + (t > MIN_SECS ? t - MIN_SECS : 0), 0);
+            const adjusted = clamped.map(t => {
+                if (t <= MIN_SECS || largeTotal === 0) return t;
+                return t - (t - MIN_SECS) / largeTotal * excess;
+            });
+
+            // Build cumulative offsets
             const offsets = [];
             let cumulative = 0;
-            for (const sentence of ttsSentences) {
+            for (let i = 0; i < n; i++) {
                 offsets.push(cumulative);
-                cumulative += (sentenceText(sentence).length || 1) / totalChars * duration;
+                cumulative += adjusted[i];
             }
-            offsets.push(duration); // sentinel end
+            offsets.push(duration); // sentinel
             return offsets;
         };
 
@@ -511,11 +540,11 @@ const AITeacher = ({ onClose }) => {
 
         sentenceTimerRef.current = setInterval(() => {
             if (!audio.duration || audio.paused) return;
-            // Build offsets once per play (after duration is known)
+            // Build offsets once per play session (after duration is known)
             if (!offsets) offsets = buildTimeOffsets(audio.duration);
             const ct = audio.currentTime;
             // Find which sentence window currentTime falls into
-            let idx = offsets.length - 2; // default to last sentence
+            let idx = offsets.length - 2; // default: last sentence
             for (let i = 0; i < offsets.length - 1; i++) {
                 if (ct >= offsets[i] && ct < offsets[i + 1]) {
                     idx = i;
@@ -523,8 +552,9 @@ const AITeacher = ({ onClose }) => {
                 }
             }
             setCurrentSentenceIdx(Math.min(idx, ttsSentences.length - 1));
-        }, 150); // Poll more frequently for snappier updates
+        }, 100); // poll every 100 ms for snappy updates
     };
+
 
     // Poll HeyGen for video completion (every 15 seconds) — kept for HeyGen fallback
     // eslint-disable-next-line no-unused-vars
