@@ -5,7 +5,7 @@
  * and the "register/login" aliases used by AuthModal.
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 
 const AuthContext = createContext(null);
@@ -21,21 +21,41 @@ export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userRole, setUserRole] = useState(null);
 
-  // ── Bootstrap: restore session from Supabase ──────────────────────
+
+  // Fetch role from profiles table
+  const fetchUserRole = useCallback(async (userId) => {
+    if (!userId) return null;
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      const role = data?.role ?? null;
+      setUserRole(role);
+      return role;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Bootstrap: restore session from Supabase
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
+      if (s?.user) fetchUserRole(s.user.id);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
+      if (s?.user) fetchUserRole(s.user.id); else setUserRole(null);
       setLoading(false);
 
-      // Persist access_token for backend API calls
       if (s?.access_token) {
         localStorage.setItem('access_token', s.access_token);
         localStorage.setItem('refresh_token', s.refresh_token ?? '');
@@ -48,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchUserRole]);
 
   // ── Helpers ────────────────────────────────────────────────────────
   const clearError = () => setError(null);
@@ -139,17 +159,19 @@ export const AuthProvider = ({ children }) => {
     session,
     loading,
     error,
+    userRole,
     isAuthenticated: !!session,
 
     // auth actions
     signUp,
-    register,     // alias for AuthModal
+    register,
     login,
     logout,
     signInWithGoogle,
 
     // helpers
     fetchUserInfo,
+    fetchUserRole,
     authenticatedFetch,
     getAccessToken,
     clearError,

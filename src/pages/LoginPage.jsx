@@ -6,38 +6,57 @@ import '../Styles/Auth.css';
 
 const LoginPage = () => {
     const { t } = useLanguage();
-    const { login, signUp, signInWithGoogle } = useAuth();
+    const { login, signUp, signInWithGoogle, fetchUserRole, user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
-    // isLogin toggles between 'Sign In' and 'Create Account'
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [verifyMsg, setVerifyMsg] = useState('');
 
-    const from = location.state?.from?.pathname || "/chat";
+    const from = location.state?.from?.pathname || '/chat';
+
+    // After successful login, check role and redirect appropriately
+    const afterLogin = async (sessionUser) => {
+        const uid = sessionUser?.id || user?.id;
+        const role = uid ? await fetchUserRole(uid) : null;
+        if (!role) {
+            navigate('/select-role', { replace: true });
+        } else {
+            const dest = role === 'teacher' ? '/teacher' : role === 'student' ? '/student' : from;
+            navigate(dest, { replace: true });
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setVerifyMsg('');
         setLoading(true);
 
         try {
             if (isLogin) {
-                const { error } = await login(email, password);
-                if (error) throw error;
-                navigate(from, { replace: true });
+                const { data, error: err } = await login(email, password);
+                if (err) throw err;
+                await afterLogin(data?.user);
             } else {
-                const { error } = await signUp(email, password, fullName);
-                if (error) throw error;
-                alert('Account created! Please check your email for verification (if enabled) or log in.');
-                setIsLogin(true); // Switch to login view after signup
+                const { data, error: err } = await signUp(email, password, fullName);
+                if (err) throw err;
+                if (data?.session) {
+                    // Email confirmation disabled — go to role selector
+                    await afterLogin(data.user);
+                } else {
+                    // Email confirmation enabled — tell user to check inbox
+                    setVerifyMsg(`We sent a verification link to ${email}. Please check your inbox then sign in.`);
+                    setIsLogin(true);
+                }
             }
         } catch (err) {
-            setError(err.message);
+            setError(err.message || 'An error occurred');
         } finally {
             setLoading(false);
         }
@@ -62,6 +81,11 @@ const LoginPage = () => {
                 </div>
 
                 {error && <div className="error-banner">{error}</div>}
+                {verifyMsg && (
+                    <div className="error-banner" style={{ background: 'rgba(0,184,148,0.15)', borderColor: '#00b894', color: '#00b894' }}>
+                        📧 {verifyMsg}
+                    </div>
+                )}
 
                 <button
                     type="button"
