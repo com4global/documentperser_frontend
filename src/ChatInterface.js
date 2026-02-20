@@ -1613,7 +1613,7 @@ function ChatInterface() {
       {/* macOS Dock — fixed at bottom */}
       <MacDock
         activeView={activeView}
-        role={localRole || 'all'}
+        role={localRole || 'student'}
         onNewChat={startNewChat}
         onNavigate={handleDockNavigate}
         onUploadClick={() => fileInputRef.current?.click()}
