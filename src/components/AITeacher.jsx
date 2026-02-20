@@ -483,21 +483,47 @@ const AITeacher = ({ onClose }) => {
     };
 
     // Sync subtitles with audio playback
+    // Uses character-count weighting so longer sentences stay visible longer,
+    // matching TTS speech timing much more accurately than linear division.
     const startSentenceSync = () => {
         if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
         if (!audioRef.current || ttsSentences.length === 0) return;
 
         const audio = audioRef.current;
 
+        // Helper: get the plain text from a sentence item (string OR enriched object)
+        const sentenceText = (s) => (s && typeof s === 'object' ? s.text || '' : s || '');
+
+        // Build cumulative time offsets weighted by character count
+        const buildTimeOffsets = (duration) => {
+            const totalChars = ttsSentences.reduce((sum, s) => sum + (sentenceText(s).length || 1), 0);
+            const offsets = [];
+            let cumulative = 0;
+            for (const sentence of ttsSentences) {
+                offsets.push(cumulative);
+                cumulative += (sentenceText(sentence).length || 1) / totalChars * duration;
+            }
+            offsets.push(duration); // sentinel end
+            return offsets;
+        };
+
+        let offsets = null;
+
         sentenceTimerRef.current = setInterval(() => {
             if (!audio.duration || audio.paused) return;
-            const progress = audio.currentTime / audio.duration;
-            const sentenceIdx = Math.min(
-                Math.floor(progress * ttsSentences.length),
-                ttsSentences.length - 1
-            );
-            setCurrentSentenceIdx(sentenceIdx);
-        }, 300);
+            // Build offsets once per play (after duration is known)
+            if (!offsets) offsets = buildTimeOffsets(audio.duration);
+            const ct = audio.currentTime;
+            // Find which sentence window currentTime falls into
+            let idx = offsets.length - 2; // default to last sentence
+            for (let i = 0; i < offsets.length - 1; i++) {
+                if (ct >= offsets[i] && ct < offsets[i + 1]) {
+                    idx = i;
+                    break;
+                }
+            }
+            setCurrentSentenceIdx(Math.min(idx, ttsSentences.length - 1));
+        }, 150); // Poll more frequently for snappier updates
     };
 
     // Poll HeyGen for video completion (every 15 seconds) — kept for HeyGen fallback
@@ -1097,10 +1123,35 @@ const AITeacher = ({ onClose }) => {
                                     <div className="tts-avatar-label">👩‍🏫 AI Teacher</div>
                                 </div>
 
+                                {/* Wikipedia concept image — changes with each sentence */}
+                                {(() => {
+                                    const sent = ttsSentences[currentSentenceIdx];
+                                    const imgUrl = sent && typeof sent === 'object' ? sent.image_url : '';
+                                    const imgCaption = sent && typeof sent === 'object' ? sent.image_caption : '';
+                                    return imgUrl ? (
+                                        <div className="tts-concept-image-panel" key={imgUrl}>
+                                            <img
+                                                src={imgUrl}
+                                                alt={imgCaption || 'concept image'}
+                                                className="tts-concept-image"
+                                                loading="lazy"
+                                                decoding="async"
+                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                            />
+                                            {imgCaption && (
+                                                <div className="tts-concept-image-caption">{imgCaption}</div>
+                                            )}
+                                        </div>
+                                    ) : null;
+                                })()}
+
                                 {/* Subtitle Display */}
                                 <div className="tts-subtitle-card">
                                     <div className="tts-subtitle-text">
-                                        {ttsSentences[currentSentenceIdx] || '...'}
+                                        {(() => {
+                                            const sent = ttsSentences[currentSentenceIdx];
+                                            return typeof sent === 'object' && sent !== null ? sent.text : (sent || '...');
+                                        })()}
                                     </div>
                                     <div className="tts-subtitle-counter">
                                         {currentSentenceIdx + 1} / {ttsSentences.length}
@@ -1284,6 +1335,22 @@ const AITeacher = ({ onClose }) => {
                                                     </span>
                                                 )}
                                                 <div>{msg.text}</div>
+                                                {/* Wikipedia concept image for this bubble */}
+                                                {msg.image_url && (
+                                                    <div className="bubble-concept-image-wrap">
+                                                        <img
+                                                            src={msg.image_url}
+                                                            alt={msg.image_caption || ''}
+                                                            className="bubble-concept-image"
+                                                            loading="lazy"
+                                                            decoding="async"
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
+                                                        {msg.image_caption && (
+                                                            <div className="bubble-concept-caption">{msg.image_caption}</div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );

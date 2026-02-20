@@ -1906,3 +1906,93 @@
         padding: 20px;
     }
 }
+
+/* =====================================================
+   WIKIPEDIA CONCEPT IMAGES
+   ===================================================== */
+
+/* TTS Video — concept image panel (sits beside the avatar) */
+@keyframes conceptImageFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.94) translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.tts-concept-image-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    animation: conceptImageFadeIn 0.4s ease;
+    margin: 12px auto 0;
+    max-width: 280px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 8px 8px 6px;
+    backdrop-filter: blur(6px);
+}
+
+.tts-concept-image {
+    width: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+}
+
+.tts-concept-image-caption {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    text-align: center;
+    font-style: italic;
+    line-height: 1.3;
+    padding: 0 4px 2px;
+}
+
+/* Dialogue bubble — image thumbnail */
+.bubble-concept-image-wrap {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: conceptImageFadeIn 0.4s ease;
+    max-width: 220px;
+}
+
+.bubble-concept-image {
+    width: 100%;
+    max-height: 130px;
+    object-fit: cover;
+    border-radius: 8px;
+    display: block;
+    opacity: 0.9;
+    transition: opacity 0.2s;
+}
+
+.bubble-concept-image:hover {
+    opacity: 1;
+}
+
+.bubble-concept-caption {
+    font-size: 0.63rem;
+    color: #64748b;
+    font-style: italic;
+    line-height: 1.3;
+}
+
+@media (max-width: 768px) {
+    .tts-concept-image-panel {
+        max-width: 100%;
+    }
+
+    .bubble-concept-image-wrap {
+        max-width: 160px;
+    }
+}
