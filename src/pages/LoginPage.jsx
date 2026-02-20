@@ -22,13 +22,19 @@ const LoginPage = () => {
 
     // After successful login, check role and redirect appropriately
     const afterLogin = async (sessionUser) => {
-        const uid = sessionUser?.id || user?.id;
-        const role = uid ? await fetchUserRole(uid) : null;
-        if (!role) {
+        try {
+            const uid = sessionUser?.id || user?.id;
+            const role = (uid && typeof fetchUserRole === 'function')
+                ? await fetchUserRole(uid)
+                : null;
+            if (!role) {
+                navigate('/select-role', { replace: true });
+            } else {
+                const dest = role === 'teacher' ? '/teacher' : role === 'student' ? '/student' : from;
+                navigate(dest, { replace: true });
+            }
+        } catch {
             navigate('/select-role', { replace: true });
-        } else {
-            const dest = role === 'teacher' ? '/teacher' : role === 'student' ? '/student' : from;
-            navigate(dest, { replace: true });
         }
     };
 
