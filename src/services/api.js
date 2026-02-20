@@ -532,8 +532,12 @@ export const apiService = {
     return authenticatedFetch('/api/classrooms');
   },
 
+  async deleteClassroom(classroomId) {
+    return authenticatedFetch(`/api/classrooms/${classroomId}`, { method: 'DELETE' });
+  },
 
   async createClassroom(name, description = '', docName = '') {
+
     const formData = new FormData();
     formData.append('name', name);
     formData.append('description', description);

@@ -71,6 +71,17 @@ export default function TeacherDashboard() {
         }
     };
 
+    const handleDeleteClassroom = async (cls) => {
+        if (!window.confirm(`Delete "${cls.name}"? This cannot be undone.`)) return;
+        try {
+            await apiService.deleteClassroom(cls.id);
+            loadClassrooms();
+        } catch (e) {
+            console.error('deleteClassroom error:', e);
+            alert('Failed to delete: ' + e.message);
+        }
+    };
+
     const openClassroomDetail = async (classroom) => {
         setLoading(true);
         try {
@@ -177,6 +188,13 @@ export default function TeacherDashboard() {
                                 </button>
                                 <button className="td-btn td-btn-sm td-btn-accent" onClick={() => openProgress(c)}>
                                     📊 Progress
+                                </button>
+                                <button
+                                    className="td-btn td-btn-sm"
+                                    style={{ background: 'rgba(255,80,80,0.15)', color: '#ff6b6b', border: '1px solid rgba(255,80,80,0.3)' }}
+                                    onClick={() => handleDeleteClassroom(c)}
+                                >
+                                    🗑️ Delete
                                 </button>
                             </div>
                         </div>
