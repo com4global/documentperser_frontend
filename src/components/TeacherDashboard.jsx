@@ -389,7 +389,7 @@ export default function TeacherDashboard() {
                     )}
                 </div>
                 <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button className="td-btn td-btn-ghost" onClick={() => navigate('/')}>🏠 Home</button>
+                    <button className="td-btn td-btn-ghost" onClick={() => navigate('/chat')}>🏠 Home</button>
                     <button className="td-btn td-btn-ghost" onClick={() => navigate('/chat')}>💬 Chat</button>
                     <button className="td-btn td-btn-ghost" style={{ color: '#ff8888' }} onClick={handleSignOut}>⎋ Sign Out</button>
                 </nav>

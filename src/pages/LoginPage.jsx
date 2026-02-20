@@ -6,7 +6,7 @@ import '../Styles/Auth.css';
 
 const LoginPage = () => {
     const { t } = useLanguage();
-    const { login, signUp, signInWithGoogle, fetchUserRole, user } = useAuth();
+    const { login, signUp, signInWithGoogle, fetchUserRole, userRole } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -21,19 +21,20 @@ const LoginPage = () => {
     const from = location.state?.from?.pathname || '/chat';
 
     // After successful login, check role and redirect appropriately
-    const afterLogin = async (sessionUser) => {
-        try {
-            const uid = sessionUser?.id || user?.id;
-            const role = (uid && typeof fetchUserRole === 'function')
-                ? await fetchUserRole(uid)
-                : null;
-            if (!role) {
-                navigate('/select-role', { replace: true });
-            } else {
-                const dest = role === 'teacher' ? '/teacher' : role === 'student' ? '/student' : from;
-                navigate(dest, { replace: true });
-            }
-        } catch {
+    const afterLogin = async (loginData) => {
+        // loginData is the raw Supabase auth data: { user, session }
+        const uid = loginData?.user?.id ?? loginData?.session?.user?.id;
+        let role = null;
+        if (uid) {
+            try { role = await fetchUserRole(uid); } catch { role = null; }
+        }
+        // Fallback to already-loaded context role
+        if (!role) role = userRole;
+
+        if (role) {
+            const dest = role === 'teacher' ? '/teacher' : role === 'student' ? '/student' : from;
+            navigate(dest, { replace: true });
+        } else {
             navigate('/select-role', { replace: true });
         }
     };
@@ -47,8 +48,9 @@ const LoginPage = () => {
         try {
             if (isLogin) {
                 const { data, error: err } = await login(email, password);
-                if (err) throw err;
-                await afterLogin(data?.user);
+                if (err) throw new Error(typeof err === 'string' ? err : err.message || 'Login failed');
+                // data is the raw Supabase payload: { user, session }
+                await afterLogin(data);
             } else {
                 const { data, error: err } = await signUp(email, password, fullName);
                 if (err) throw err;
