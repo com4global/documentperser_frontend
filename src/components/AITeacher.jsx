@@ -62,6 +62,7 @@ const AITeacher = ({ onClose }) => {
     const recognitionRef = useRef(null);
     const preDoubtStateRef = useRef(null);  // { currentTime, sentenceIdx, wasPlaying, view }
     const doubtAudioRef = useRef(null);     // answer TTS audio
+    const isAskingDoubtRef = useRef(false); // live ref — readable inside async closures
 
     // ── End-of-Session Q&A prompt state ──
     const [endSessionQA, setEndSessionQA] = useState(false);       // are we in end-of-session Q&A phase?
@@ -287,7 +288,8 @@ const AITeacher = ({ onClose }) => {
 
                 // All dialogue bubbles finished — trigger end-of-session Q&A
                 // (skip if user is currently in the doubt panel)
-                if (!cancelled && !isAskingDoubt) {
+                // Use the ref (not state) — state is a stale closure here
+                if (!cancelled && !isAskingDoubtRef.current) {
                     triggerEndOfSessionQA();
                 }
             };
@@ -627,6 +629,7 @@ const AITeacher = ({ onClose }) => {
         setDoubtAnswer('');
         setDoubtTypedText('');
         setDoubtLoading(false);
+        isAskingDoubtRef.current = true;   // set ref BEFORE state so async loops see it
         setIsAskingDoubt(true);
 
         // 2. Start speech recognition if available
@@ -705,6 +708,7 @@ const AITeacher = ({ onClose }) => {
         if (recognitionRef.current) {
             try { recognitionRef.current.stop(); } catch (e) { /* ignore */ }
         }
+        isAskingDoubtRef.current = false;  // clear ref in sync with state
         setIsAskingDoubt(false);
         setDoubtTranscript('');
         setDoubtAnswer('');
