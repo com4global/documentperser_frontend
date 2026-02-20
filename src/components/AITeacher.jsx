@@ -540,7 +540,6 @@ const AITeacher = ({ onClose }) => {
             // If still no reliable duration, use wall-clock as rough guide
             if (!offsets) {
                 if (!wallStart) wallStart = Date.now();
-                const elSec = (Date.now() - wallStart) / 1000;
                 const roughDur = n * FALLBACK_PER_SENTENCE;
                 offsets = buildOffsets(roughDur);
                 lastBuiltDuration = roughDur;
