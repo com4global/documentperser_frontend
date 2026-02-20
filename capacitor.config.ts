@@ -5,23 +5,32 @@ const config: CapacitorConfig = {
   appName: 'EdTech AI Learning',
   webDir: 'build',
   server: {
-    // For development: point to your local dev server
-    // Uncomment the line below during development, comment it for production builds
-    // url: 'http://10.5.0.2:3001',
+    // For production: leave 'url' commented out so the app uses the bundled build
+    // For development: uncomment the line below and point to your local IP
+    // url: 'http://YOUR_LOCAL_IP:3000',
     cleartext: true,
     androidScheme: 'https'
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 2500,
       launchAutoHide: true,
       backgroundColor: '#0f172a',
-      showSpinner: true,
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      iosSpinnerStyle: 'large',
       spinnerColor: '#667eea'
     },
     StatusBar: {
       style: 'DARK',
-      backgroundColor: '#0f172a'
+      backgroundColor: '#6366f1'     // matches the header gradient
+    },
+    Haptics: {
+      // No config needed — available by default
+    },
+    Network: {
+      // Automatically monitors online/offline
     }
   }
 };

@@ -93,32 +93,39 @@ export default function LandingPage() {
   }, [features.length]);
 
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', background: '#0a0a0a', color: '#fff', overflow: 'hidden' }}>
+    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', background: '#0a0a0a', color: '#fff', overflowX: 'hidden' }}>
       {/* Navigation */}
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
         background: isScrolled ? 'rgba(10, 10, 10, 0.95)' : 'transparent',
         backdropFilter: isScrolled ? 'blur(10px)' : 'none',
         borderBottom: isScrolled ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
-        transition: 'all 0.3s ease', padding: '1.25rem 2rem'
+        transition: 'all 0.3s ease', padding: '1rem 1.25rem'
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold', boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)' }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+            <div style={{ width: '38px', height: '38px', background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)' }}>
               🎓
             </div>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('appName')}</span>
+            <span style={{ fontSize: '1.3rem', fontWeight: 800, background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('appName')}</span>
           </div>
-          <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'center' }}>
+          {/* Desktop Nav — hidden on mobile via inline style trick */}
+          <div className="nav-desktop" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
             <LanguageSwitcher />
-            <a href="#features" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>{t('navFeatures')}</a>
-            <a href="#pricing" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>{t('navPricing')}</a>
-            <a href="#docs" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500 }}>{t('navDocs')}</a>
-            <button onClick={() => { if (isAuthenticated) { navigate('/chat'); } else { navigate('/login'); } }} style={{ background: 'none', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>{t('signIn')}</button>
-            <button onClick={handleStartTrial} style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)' }}>{t('startFree')} →</button>
+            <a href="#features" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>{t('navFeatures')}</a>
+            <a href="#pricing" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>{t('navPricing')}</a>
+            <a href="#docs" style={{ color: '#d1d5db', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>{t('navDocs')}</a>
+            <button onClick={() => { if (isAuthenticated) { navigate('/chat'); } else { navigate('/login'); } }} style={{ background: 'none', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '0.5rem 1rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>{t('signIn')}</button>
+            <button onClick={handleStartTrial} style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)' }}>{t('startFree')} →</button>
+          </div>
+          {/* Mobile: just show Sign In + Start Free */}
+          <div className="nav-mobile" style={{ display: 'none', gap: '0.5rem', alignItems: 'center' }}>
+            <LanguageSwitcher />
+            <button onClick={handleStartTrial} style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', border: 'none', padding: '0.5rem 0.9rem', borderRadius: '8px', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>{t('startFree')}</button>
           </div>
         </div>
-      </nav >
+      </nav>
 
       {/* Hero Section */}
       < section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 50% 0%, rgba(102, 126, 234, 0.15), transparent 50%), radial-gradient(circle at 0% 100%, rgba(118, 75, 162, 0.15), transparent 50%)', position: 'relative', padding: '8rem 2rem 4rem' }
@@ -143,11 +150,11 @@ export default function LandingPage() {
               <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea, #764ba2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>&#9654;</span> {t('watchDemo')}
             </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem', maxWidth: '800px', margin: '0 auto', animation: 'fadeInUp 1.6s ease' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1.5rem', maxWidth: '800px', margin: '0 auto', animation: 'fadeInUp 1.6s ease' }}>
             {stats.map((stat, idx) => (
               <div key={idx} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '2rem', fontWeight: 800, background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{stat.value}</div>
-                <div style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '0.25rem' }}>{stat.label}</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{stat.value}</div>
+                <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '0.25rem' }}>{stat.label}</div>
               </div>
             ))}
           </div>
@@ -251,6 +258,10 @@ export default function LandingPage() {
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         button:hover { transform: translateY(-2px); }
         a:hover { color: #667eea !important; }
+        @media (max-width: 768px) {
+          .nav-desktop { display: none !important; }
+          .nav-mobile { display: flex !important; }
+        }
       `}</style>
     </div >
   );

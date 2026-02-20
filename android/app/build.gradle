@@ -3,6 +3,16 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.zenzee.edtech"
     compileSdk = rootProject.ext.compileSdkVersion
+    
+    signingConfigs {
+        release {
+            storeFile rootProject.file("zenzee.keystore")
+            storePassword 'changeme_store_password'
+            keyAlias 'zenzee-key'
+            keyPassword 'changeme_key_password'
+        }
+    }
+
     defaultConfig {
         applicationId "com.zenzee.edtech"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -16,8 +26,10 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
