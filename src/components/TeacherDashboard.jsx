@@ -23,12 +23,22 @@ export default function TeacherDashboard() {
     const [assignTopics, setAssignTopics] = useState('');
     const [assignDue, setAssignDue] = useState('');
 
+    const [listError, setListError] = useState('');
+
     const loadClassrooms = useCallback(async () => {
         setLoading(true);
+        setListError('');
         try {
             const res = await apiService.listClassrooms();
-            if (res.success) setClassrooms(res.classrooms || []);
-        } catch (e) { console.error(e); }
+            if (res.success) {
+                setClassrooms(res.classrooms || []);
+            } else {
+                setListError(res.detail || res.message || 'Failed to load classrooms');
+            }
+        } catch (e) {
+            console.error('loadClassrooms error:', e);
+            setListError(e.message || 'Failed to load classrooms — check console');
+        }
         setLoading(false);
     }, []);
 
@@ -140,6 +150,10 @@ export default function TeacherDashboard() {
 
             {loading ? (
                 <div className="td-loading">Loading...</div>
+            ) : listError ? (
+                <div style={{ color: '#ff6b6b', padding: '16px', background: 'rgba(255,107,107,0.08)', borderRadius: 8, margin: '8px 0' }}>
+                    ⚠️ {listError}
+                </div>
             ) : classrooms.length === 0 ? (
                 <div className="td-empty">
                     <p>No classrooms yet. Create one to get started!</p>
