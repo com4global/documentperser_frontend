@@ -227,3 +227,76 @@
         font-size: 20px;
     }
 }
+
+/* ── TeacherDock — left-side overrides ── */
+.teacher-dock-wrapper {
+    /* Pin to LEFT instead of right */
+    right: unset;
+    left: 14px;
+    flex-direction: row-reverse;
+    /* shelf first, reflection to its left */
+}
+
+.teacher-dock-reflection {
+    /* Reflection faces right (toward screen) */
+    background: linear-gradient(to left,
+            rgba(255, 255, 255, 0.18),
+            transparent);
+    border-radius: 8px 0 0 8px;
+}
+
+/* Bounce toward the right for left dock */
+.dock-item--bounce-left {
+    animation: dockBounceLeft 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes dockBounceLeft {
+    0% {
+        transform: translateX(0);
+    }
+
+    30% {
+        transform: translateX(14px);
+    }
+
+    55% {
+        transform: translateX(0);
+    }
+
+    75% {
+        transform: translateX(6px);
+    }
+
+    90% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Tooltip to the RIGHT for the left dock */
+.teacher-dock-tooltip {
+    right: unset;
+    left: calc(100% + 12px);
+    transform: translateY(-50%) translateX(-6px);
+}
+
+.teacher-dock-tooltip.dock-tooltip--visible {
+    transform: translateY(-50%) translateX(0);
+}
+
+/* Arrow points LEFT (toward the icon) */
+.teacher-dock-tooltip::after {
+    left: unset;
+    right: 100%;
+    border-left-color: transparent;
+    border-right-color: rgba(20, 20, 20, 0.88);
+}
+
+@media (max-width: 600px) {
+    .teacher-dock-wrapper {
+        left: 8px;
+    }
+}

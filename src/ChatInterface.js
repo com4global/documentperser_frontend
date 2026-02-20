@@ -1076,12 +1076,15 @@ import apiService from './services/api';
 import AdminDashboard from './components/AdminDashboard';
 import LegalAnalyzer from './components/LegalAnalyzer';
 import AITeacher from './components/AITeacher';
-import MacDock from './components/MacDock';
+import MacDock, { TeacherDock } from './components/MacDock';
+import { useAuth } from './contexts/AuthContext';
 import { useLanguage } from './contexts/LanguageContext';
 import LanguageSwitcher from './components/LanguageSwitcher';
 
 function ChatInterface() {
   const { t, language } = useLanguage();
+  const { userRole } = useAuth();
+  const isTeacher = userRole === 'teacher';
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
   const [showAITeacher, setShowAITeacher] = useState(false);
@@ -1588,6 +1591,11 @@ function ChatInterface() {
           </div>
         </>
       </div>
+
+      {/* Teacher Dock — left side, only for teachers */}
+      {isTeacher && (
+        <TeacherDock onClassroom={() => navigate('/teacher')} />
+      )}
 
       {/* macOS Dock — fixed at bottom */}
       <MacDock
