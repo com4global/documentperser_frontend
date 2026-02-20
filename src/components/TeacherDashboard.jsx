@@ -15,6 +15,7 @@ export default function TeacherDashboard() {
     const [newName, setNewName] = useState('');
     const [newDesc, setNewDesc] = useState('');
     const [newDoc, setNewDoc] = useState('');
+    const [createError, setCreateError] = useState('');
 
     // Create assignment form
     const [showAssign, setShowAssign] = useState(false);
@@ -34,22 +35,30 @@ export default function TeacherDashboard() {
     const loadDocuments = useCallback(async () => {
         try {
             const res = await apiService.getEdtechDocuments();
-            if (res.success) setDocuments(res.documents || []);
-        } catch (e) { console.error(e); }
+            // Handle multiple possible response shapes
+            const docs = res.documents || res.files || res.data || [];
+            setDocuments(docs);
+        } catch (e) { console.error('loadDocuments:', e); }
     }, []);
 
     useEffect(() => { loadClassrooms(); loadDocuments(); }, [loadClassrooms, loadDocuments]);
 
     const handleCreateClassroom = async () => {
         if (!newName.trim()) return;
+        setCreateError('');
         try {
             const res = await apiService.createClassroom(newName, newDesc, newDoc);
             if (res.success) {
                 setShowCreate(false);
                 setNewName(''); setNewDesc(''); setNewDoc('');
                 loadClassrooms();
+            } else {
+                setCreateError(res.detail || res.message || 'Failed to create classroom');
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error('createClassroom error:', e);
+            setCreateError(e.message || 'An error occurred — check console for details');
+        }
     };
 
     const openClassroomDetail = async (classroom) => {
@@ -119,8 +128,13 @@ export default function TeacherDashboard() {
                     </select>
                     <div className="td-form-actions">
                         <button className="td-btn td-btn-primary" onClick={handleCreateClassroom}>Create</button>
-                        <button className="td-btn td-btn-ghost" onClick={() => setShowCreate(false)}>Cancel</button>
+                        <button className="td-btn td-btn-ghost" onClick={() => { setShowCreate(false); setCreateError(''); }}>Cancel</button>
                     </div>
+                    {createError && (
+                        <div style={{ color: '#ff6b6b', fontSize: '0.85rem', marginTop: 8, padding: '6px 10px', background: 'rgba(255,107,107,0.1)', borderRadius: 6 }}>
+                            ⚠️ {createError}
+                        </div>
+                    )}
                 </div>
             )}
 
