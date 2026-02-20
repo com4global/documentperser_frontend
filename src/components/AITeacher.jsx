@@ -81,30 +81,13 @@ const AITeacher = ({ onClose }) => {
     // ── End-of-Session Q&A: trigger after lesson finishes ──
     const triggerEndOfSessionQA = () => {
         setEndSessionQA(true);
-        setEndSessionPhase('listening');   // Go straight to listening — no waiting
+        setEndSessionPhase('prompt');  // just show the panel; wait for user to ask
         setEndSessionAnswer('');
         setEndSessionQuestion('');
         setEndSessionTyped('');
-
-        // Start listening + timeout immediately
-        startEndSessionListening();
-
-        // Play the voice prompt in the background (non-blocking)
-        const prompt = language === 'ta'
-            ? 'இந்த தலைப்பில் ஏதேனும் கேள்விகள் உள்ளதா?'
-            : 'Do you have any questions on this topic?';
-        apiService.speakAnswer(prompt, language)
-            .then(ttsRes => {
-                if (ttsRes.success && ttsRes.audio_url) {
-                    const url = ttsRes.audio_url.startsWith('http')
-                        ? ttsRes.audio_url
-                        : `${process.env.REACT_APP_API_URL || ''}${ttsRes.audio_url}`;
-                    const audio = new Audio(url);
-                    endSessionAudioRef.current = audio;
-                    audio.play().catch(() => { });
-                }
-            })
-            .catch(() => { }); // non-fatal
+        // NOTE: Do NOT auto-start speech recognition or set any timeout here.
+        // The user must explicitly click the mic button or type a question.
+        // Auto-listening was picking up Tamil audio from the lesson as a "question".
     };
 
     const startEndSessionListening = () => {
@@ -170,8 +153,7 @@ const AITeacher = ({ onClose }) => {
         setEndSessionQuestion('');
         setEndSessionTyped('');
         if (endSessionAudioRef.current) { endSessionAudioRef.current.pause(); endSessionAudioRef.current = null; }
-        setEndSessionPhase('listening');
-        startEndSessionListening();
+        setEndSessionPhase('prompt'); // go back to prompt — user must explicitly ask again
     };
 
     const handleEndSessionNoQuestion = async () => {
@@ -1643,13 +1625,64 @@ const AITeacher = ({ onClose }) => {
                             </div>
 
                             <div className="doubt-panel-body">
-                                {/* Prompting phase — avatar is asking */}
-                                {endSessionPhase === 'prompting' && (
-                                    <div className="doubt-listening" style={{ padding: '24px 0' }}>
-                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>👩‍🏫</div>
-                                        <p style={{ color: '#e2e8f0', fontWeight: 600 }}>Do you have any questions on this topic?</p>
-                                        <div className="doubt-loading-spinner" style={{ marginTop: '16px' }}></div>
-                                    </div>
+                                {/* Prompt phase — show teacher, wait for user to type or click mic */}
+                                {(endSessionPhase === 'prompt' || endSessionPhase === 'prompting') && (
+                                    <>
+                                        <div className="doubt-listening" style={{ padding: '16px 0' }}>
+                                            <div style={{ fontSize: '42px', marginBottom: '10px' }}>👩‍🏫</div>
+                                            <p style={{ color: '#e2e8f0', fontWeight: 600 }}>
+                                                {language === 'ta'
+                                                    ? 'இந்த தலைப்பில் கேள்விகள் இருந்தால் கேளுங்கள்!'
+                                                    : 'Session complete! Type a question below or click the mic.'}
+                                            </p>
+                                        </div>
+                                        {/* Text input — always visible in prompt phase */}
+                                        <div className="doubt-type-fallback">
+                                            <input
+                                                type="text"
+                                                className="doubt-type-input"
+                                                placeholder={language === 'ta' ? 'உங்கள் கேள்வியை தட்டச்சு செய்யவும்...' : 'Type your question here...'}
+                                                value={endSessionTyped}
+                                                onChange={(e) => setEndSessionTyped(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && endSessionTyped.trim()) {
+                                                        setEndSessionQuestion(endSessionTyped);
+                                                        handleEndSessionQuestion(endSessionTyped);
+                                                    }
+                                                }}
+                                                autoFocus
+                                            />
+                                            <button
+                                                className="doubt-send-btn"
+                                                onClick={() => {
+                                                    if (endSessionTyped.trim()) {
+                                                        setEndSessionQuestion(endSessionTyped);
+                                                        handleEndSessionQuestion(endSessionTyped);
+                                                    }
+                                                }}
+                                                disabled={!endSessionTyped.trim()}
+                                            >
+                                                Ask
+                                            </button>
+                                        </div>
+                                        {/* Mic button — only if speech recognition available */}
+                                        {hasSpeechRecognition && (
+                                            <button
+                                                style={{
+                                                    margin: '12px auto 0', display: 'block',
+                                                    background: 'linear-gradient(135deg,#6366f1,#4f46e5)',
+                                                    color: '#fff', border: 'none', borderRadius: '12px',
+                                                    padding: '10px 24px', cursor: 'pointer', fontSize: '0.95rem'
+                                                }}
+                                                onClick={() => {
+                                                    setEndSessionPhase('listening');
+                                                    startEndSessionListening();
+                                                }}
+                                            >
+                                                🎤 {language === 'ta' ? 'பேசி கேளுங்கள்' : 'Ask by Voice'}
+                                            </button>
+                                        )}
+                                    </>
                                 )}
 
                                 {/* Listening phase */}
@@ -1734,13 +1767,13 @@ const AITeacher = ({ onClose }) => {
 
                             {/* Footer buttons */}
                             <div className="doubt-panel-footer">
-                                {endSessionPhase === 'listening' && (
+                                {(endSessionPhase === 'prompt' || endSessionPhase === 'listening') && (
                                     <button className="doubt-resume-btn" onClick={handleEndSessionNoQuestion}
                                         style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
-                                        👋 No Questions, Thanks!
+                                        👋 {language === 'ta' ? 'கேள்வி இல்லை' : 'No More Questions'}
                                     </button>
                                 )}
-                                {endSessionAnswer && endSessionPhase === 'answering' && (
+                                {endSessionAnswer && (
                                     <>
                                         <button className="doubt-ask-another" onClick={handleEndSessionAskAnother}>
                                             🎤 Ask Another
