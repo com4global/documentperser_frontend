@@ -487,63 +487,86 @@ const AITeacher = ({ onClose }) => {
         }
     };
 
-    // Sync subtitles with audio playback.
-    // Uses WORD-COUNT weighting with a minimum-time floor so each sentence
-    // gets a fair slice of the audio — works correctly for Tamil and other
-    // Indian languages where character count ≠ speech duration.
+    // ── Subtitle sync engine ──
+    // Drives currentSentenceIdx based on elapsed wall-clock play time.
+    // WHY wall-clock instead of audio.currentTime?
+    //   • VBR MP3 files make browsers mis-report audio.duration
+    //     (often 2–3× shorter than actual), so all offsets shrink and
+    //     subtitles race through in seconds while audio keeps playing.
+    //   • Wall-clock time is always reliable regardless of codec, CORS,
+    //     caching, or browser quirks.
     const startSentenceSync = () => {
         if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
         if (!audioRef.current || ttsSentences.length === 0) return;
 
         const audio = audioRef.current;
-
-        // Helper: get the plain text from a sentence item (string OR enriched object)
         const sentenceText = (s) => (s && typeof s === 'object' ? s.text || '' : s || '');
 
-        // Build cumulative time offsets using √(word-count) weighting.
-        //
-        // Why √ instead of raw word count?
-        //  • Short sentences (few words) get a proportionally LARGER share than
-        //    pure linear weighting — they won't flash by too fast.
-        //  • Long sentences still get more time, just not disproportionately so.
-        //  • Crucially, the weights always sum to EXACTLY `duration` — no sentinel
-        //    overflow that would skip all sentences to the last one.
-        const buildTimeOffsets = (duration) => {
-            const n = ttsSentences.length;
-            if (n === 0) return [0, duration];
+        // Count words per sentence (used for relative weighting)
+        const wordCounts = ttsSentences.map(s =>
+            Math.max(sentenceText(s).trim().split(/\s+/).filter(Boolean).length, 1)
+        );
+        const totalWords = wordCounts.reduce((a, b) => a + b, 0);
 
-            // Word count per sentence
-            const words = ttsSentences.map(s =>
-                Math.max(sentenceText(s).trim().split(/\s+/).filter(Boolean).length, 1)
-            );
-
-            // √ weights — gives short sentences a fairer share without min-floor artefacts
-            const sqrtW = words.map(w => Math.sqrt(w));
+        // Build √(wordCount)-weighted cumulative offsets for `totalDuration` seconds.
+        // √ smoothing gives short sentences proportionally more time so they
+        // don't flash by too fast, while total always equals totalDuration exactly.
+        const buildOffsets = (totalDuration) => {
+            const sqrtW = wordCounts.map(w => Math.sqrt(w));
             const totalSqrtW = sqrtW.reduce((a, b) => a + b, 0);
-
-            // Slice of audio each sentence occupies — guaranteed to sum to duration
-            const slices = sqrtW.map(w => (w / totalSqrtW) * duration);
-
-            // Build cumulative offsets
-            const offsets = [];
-            let cumulative = 0;
-            for (let i = 0; i < n; i++) {
-                offsets.push(cumulative);
-                cumulative += slices[i];
-            }
-            offsets.push(duration); // sentinel — must equal audio duration exactly
+            let cum = 0;
+            const offsets = wordCounts.map((_, i) => {
+                const o = cum;
+                cum += (sqrtW[i] / totalSqrtW) * totalDuration;
+                return o;
+            });
+            offsets.push(totalDuration); // sentinel
             return offsets;
         };
 
+        // Get total duration: prefer audio.duration if it looks correct (>5s),
+        // otherwise estimate from word count at 1.5 words/sec (conservative for Tamil).
+        const getEstimatedDuration = () => {
+            const d = audio.duration;
+            if (d && isFinite(d) && d > 5) return d;
+            // Conservative fallback: 1.5 Tamil words/second at pace=1.0
+            return Math.max(totalWords / 1.5, 10);
+        };
+
         let offsets = null;
+        let playStartWall = null;    // wall-clock ms when play began
+        let pausedAt = null;         // wall-clock ms when paused (for time correction)
+        let elapsedPausedMs = 0;     // total ms spent paused
 
         sentenceTimerRef.current = setInterval(() => {
-            if (!audio.duration || audio.paused) return;
-            // Build offsets once per play session (after duration is known)
-            if (!offsets) offsets = buildTimeOffsets(audio.duration);
-            const ct = audio.currentTime;
-            // Find which sentence window currentTime falls into
-            let idx = offsets.length - 2; // default: last sentence
+            if (!audio) return;
+
+            if (audio.paused) {
+                // Record when we entered pause (once)
+                if (pausedAt === null) pausedAt = Date.now();
+                return;
+            }
+
+            // Resumed from pause: accumulate how long we were paused
+            if (pausedAt !== null) {
+                elapsedPausedMs += Date.now() - pausedAt;
+                pausedAt = null;
+            }
+
+            // Initialise on first live tick
+            if (!offsets) {
+                offsets = buildOffsets(getEstimatedDuration());
+                playStartWall = Date.now();
+                elapsedPausedMs = 0;
+            }
+
+            // Elapsed play-time in seconds (wall-clock minus paused time)
+            const totalDur = offsets[offsets.length - 1];
+            const elapsedSec = (Date.now() - playStartWall - elapsedPausedMs) / 1000;
+            const ct = Math.min(elapsedSec, totalDur * 0.9999); // clamp below sentinel
+
+            // Binary search for the current subtitle window
+            let idx = ttsSentences.length - 1;
             for (let i = 0; i < offsets.length - 1; i++) {
                 if (ct >= offsets[i] && ct < offsets[i + 1]) {
                     idx = i;
@@ -551,8 +574,9 @@ const AITeacher = ({ onClose }) => {
                 }
             }
             setCurrentSentenceIdx(Math.min(idx, ttsSentences.length - 1));
-        }, 100); // poll every 100 ms for snappy updates
+        }, 200); // 200 ms is smooth enough and lower CPU than 100 ms
     };
+
 
 
     // Poll HeyGen for video completion (every 15 seconds) — kept for HeyGen fallback
@@ -1194,6 +1218,7 @@ const AITeacher = ({ onClose }) => {
                             <audio
                                 ref={audioRef}
                                 src={ttsAudioUrl}
+                                crossOrigin="anonymous"
                                 onEnded={() => {
                                     setIsTtsPlaying(false);
                                     if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
