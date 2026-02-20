@@ -483,7 +483,9 @@ const AITeacher = ({ onClose }) => {
             setCurrentSentenceIdx(0);
             audioRef.current.play();
             setIsTtsPlaying(true);
-            startSentenceSync();
+            // NOTE: do NOT call startSentenceSync() here.
+            // audio.play() → onPlay event → startSentenceSync() (single call).
+            // Calling it here too = two intervals = 2× speed.
         }
     };
 
@@ -524,13 +526,22 @@ const AITeacher = ({ onClose }) => {
             return offsets;
         };
 
-        // Get total duration: prefer audio.duration if it looks correct (>5s),
-        // otherwise estimate from word count at 1.5 words/sec (conservative for Tamil).
+        // ── Duration estimate ──
+        // IMPORTANT: NEVER use audio.duration for Sarvam/Tamil MP3 files.
+        // Sarvam generates VBR MP3 via pydub. Browsers calculate VBR duration
+        // from file-size ÷ header-bitrate, which is 3–8× too short for
+        // VBR files without a Xing/Info header. This makes all offsets tiny
+        // and subtitles race through in seconds while the voice is still talking.
+        //
+        // Instead, estimate from word count:
+        //   Sarvam bulbul:v2 Tamil at pace=1.0 ≈ 0.65 seconds per word
+        //   (measured from real audio: 5-word sentence ≈ 3–4 seconds)
         const getEstimatedDuration = () => {
-            const d = audio.duration;
-            if (d && isFinite(d) && d > 5) return d;
-            // Conservative fallback: 1.5 Tamil words/second at pace=1.0
-            return Math.max(totalWords / 1.5, 10);
+            const secsPerWord = 0.65;            // Tamil TTS pace calibrated
+            const minPerSentence = 3.5;          // never shorter than 3.5 s/sentence
+            const byWords = totalWords * secsPerWord;
+            const byFloor = ttsSentences.length * minPerSentence;
+            return Math.max(byWords, byFloor);
         };
 
         let offsets = null;
@@ -555,9 +566,16 @@ const AITeacher = ({ onClose }) => {
 
             // Initialise on first live tick
             if (!offsets) {
-                offsets = buildOffsets(getEstimatedDuration());
+                const est = getEstimatedDuration();
+                offsets = buildOffsets(est);
                 playStartWall = Date.now();
                 elapsedPausedMs = 0;
+                // ── Diagnostic (remove after confirming sync is correct) ──
+                console.log('[TTS Sync] audio.duration (browser/VBR):', audio.duration,
+                    '| totalWords:', totalWords,
+                    '| estimated total:', est.toFixed(1) + 's',
+                    '| sentences:', ttsSentences.length,
+                    '| offsets:', offsets.map(o => o.toFixed(1)));
             }
 
             // Elapsed play-time in seconds (wall-clock minus paused time)
