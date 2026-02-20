@@ -497,44 +497,38 @@ const AITeacher = ({ onClose }) => {
         // Helper: get the plain text from a sentence item (string OR enriched object)
         const sentenceText = (s) => (s && typeof s === 'object' ? s.text || '' : s || '');
 
-        // Build cumulative time offsets weighted by word count, with a minimum
-        // display floor so short sentences never vanish before they can be read.
+        // Build cumulative time offsets using √(word-count) weighting.
+        //
+        // Why √ instead of raw word count?
+        //  • Short sentences (few words) get a proportionally LARGER share than
+        //    pure linear weighting — they won't flash by too fast.
+        //  • Long sentences still get more time, just not disproportionately so.
+        //  • Crucially, the weights always sum to EXACTLY `duration` — no sentinel
+        //    overflow that would skip all sentences to the last one.
         const buildTimeOffsets = (duration) => {
-            const MIN_SECS = 2.5;   // every sentence shows for at least 2.5 s
             const n = ttsSentences.length;
+            if (n === 0) return [0, duration];
 
-            // Word count per sentence (better proxy for speech duration than chars)
-            const wordCounts = ttsSentences.map(s =>
+            // Word count per sentence
+            const words = ttsSentences.map(s =>
                 Math.max(sentenceText(s).trim().split(/\s+/).filter(Boolean).length, 1)
             );
-            const totalWords = wordCounts.reduce((a, b) => a + b, 0);
 
-            // Raw proportional durations — each sentence's "fair share" of audio time
-            const raw = wordCounts.map(w => (w / totalWords) * duration);
+            // √ weights — gives short sentences a fairer share without min-floor artefacts
+            const sqrtW = words.map(w => Math.sqrt(w));
+            const totalSqrtW = sqrtW.reduce((a, b) => a + b, 0);
 
-            // Apply minimum floor: if raw < MIN_SECS, clamp up and steal from
-            // larger slots proportionally so total always equals duration.
-            let excess = 0;
-            const clamped = raw.map(t => {
-                if (t < MIN_SECS) { excess += MIN_SECS - t; return MIN_SECS; }
-                return t;
-            });
-
-            // Redistribute excess by shrinking the larger slots
-            const largeTotal = clamped.reduce((sum, t, i) => sum + (t > MIN_SECS ? t - MIN_SECS : 0), 0);
-            const adjusted = clamped.map(t => {
-                if (t <= MIN_SECS || largeTotal === 0) return t;
-                return t - (t - MIN_SECS) / largeTotal * excess;
-            });
+            // Slice of audio each sentence occupies — guaranteed to sum to duration
+            const slices = sqrtW.map(w => (w / totalSqrtW) * duration);
 
             // Build cumulative offsets
             const offsets = [];
             let cumulative = 0;
             for (let i = 0; i < n; i++) {
                 offsets.push(cumulative);
-                cumulative += adjusted[i];
+                cumulative += slices[i];
             }
-            offsets.push(duration); // sentinel
+            offsets.push(duration); // sentinel — must equal audio duration exactly
             return offsets;
         };
 
