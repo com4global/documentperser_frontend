@@ -461,8 +461,11 @@ const AITeacher = ({ onClose }) => {
     const handleTtsPlay = () => {
         if (audioRef.current) {
             audioRef.current.play();
+            // NOTE: do NOT call startSentenceSync() here.
+            // The <audio onPlay={...}> handler calls it, ensuring it starts
+            // exactly once per play session. Calling it here too would create
+            // TWO setInterval loops, making subtitles advance at 2x speed.
             setIsTtsPlaying(true);
-            startSentenceSync();
         }
     };
 
@@ -1194,9 +1197,10 @@ const AITeacher = ({ onClose }) => {
                                 onEnded={() => {
                                     setIsTtsPlaying(false);
                                     if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
-                                    setCurrentSentenceIdx(ttsSentences.length - 1);
-                                    // Trigger end-of-session Q&A (skip if in doubt panel)
-                                    if (!isAskingDoubt) {
+                                    // Do NOT force currentSentenceIdx to last here —
+                                    // the sync loop already set it correctly as audio played.
+                                    // Trigger end-of-session Q&A (use ref — state closure is stale)
+                                    if (!isAskingDoubtRef.current) {
                                         triggerEndOfSessionQA();
                                     }
                                 }}
