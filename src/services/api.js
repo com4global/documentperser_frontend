@@ -540,21 +540,24 @@ export const apiService = {
     formData.append('name', name);
     formData.append('description', description);
     formData.append('doc_name', docName);
-    return authenticatedFetch('/api/classrooms', {
+    const response = await authenticatedFetch('/api/classrooms', {
       method: 'POST', body: formData
     });
+    return handleResponse(response);
   },
 
   async joinClassroom(joinCode) {
     const formData = new FormData();
     formData.append('join_code', joinCode);
-    return authenticatedFetch('/api/classrooms/join', {
+    const response = await authenticatedFetch('/api/classrooms/join', {
       method: 'POST', body: formData
     });
+    return handleResponse(response);
   },
 
   async getClassroomDetail(classroomId) {
-    return authenticatedFetch(`/api/classrooms/${classroomId}`);
+    const response = await authenticatedFetch(`/api/classrooms/${classroomId}`);
+    return handleResponse(response);
   },
 
   async createAssignment(classroomId, chapterTitle, topics = [], dueDate = '') {
@@ -562,9 +565,10 @@ export const apiService = {
     formData.append('chapter_title', chapterTitle);
     formData.append('topics', JSON.stringify(topics));
     formData.append('due_date', dueDate);
-    return authenticatedFetch(`/api/classrooms/${classroomId}/assignments`, {
+    const response = await authenticatedFetch(`/api/classrooms/${classroomId}/assignments`, {
       method: 'POST', body: formData
     });
+    return handleResponse(response);
   },
 
   async updateProgress(classroomId, topic, activityType, quizScore = 0, quizAnswers = {}) {
@@ -574,18 +578,21 @@ export const apiService = {
     formData.append('activity_type', activityType);
     formData.append('quiz_score', quizScore.toString());
     formData.append('quiz_answers', JSON.stringify(quizAnswers));
-    return authenticatedFetch('/api/progress/update', {
+    const response = await authenticatedFetch('/api/progress/update', {
       method: 'POST', body: formData
     });
+    return handleResponse(response);
   },
 
   async getMyProgress(classroomId = '') {
     const params = classroomId ? `?classroom_id=${classroomId}` : '';
-    return authenticatedFetch(`/api/progress/me${params}`);
+    const response = await authenticatedFetch(`/api/progress/me${params}`);
+    return handleResponse(response);
   },
 
   async getClassroomProgress(classroomId) {
-    return authenticatedFetch(`/api/classrooms/${classroomId}/progress`);
+    const response = await authenticatedFetch(`/api/classrooms/${classroomId}/progress`);
+    return handleResponse(response);
   },
 
   // ---- Web URL Ingestion ----

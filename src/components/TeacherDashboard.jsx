@@ -112,7 +112,10 @@ export default function TeacherDashboard() {
                         value={newDesc} onChange={e => setNewDesc(e.target.value)} />
                     <select value={newDoc} onChange={e => setNewDoc(e.target.value)}>
                         <option value="">-- Select textbook --</option>
-                        {documents.map(d => <option key={d} value={d}>{d}</option>)}
+                        {documents.map(d => {
+                            const name = d.filename || d.file_name || d;
+                            return <option key={name} value={name}>{name}</option>;
+                        })}
                     </select>
                     <div className="td-form-actions">
                         <button className="td-btn td-btn-primary" onClick={handleCreateClassroom}>Create</button>
