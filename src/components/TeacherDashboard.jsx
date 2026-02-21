@@ -22,6 +22,9 @@ export default function TeacherDashboard() {
     const [newChapter, setNewChapter] = useState('');
     const [chaptersForDoc, setChaptersForDoc] = useState([]);
     const [chaptersLoading, setChaptersLoading] = useState(false);
+    const [topicsForChapter, setTopicsForChapter] = useState([]);
+    const [topicsLoading, setTopicsLoading] = useState(false);
+    const [newTopics, setNewTopics] = useState([]);
     const [createError, setCreateError] = useState('');
 
     // Create assignment — wizard state
@@ -76,6 +79,8 @@ export default function TeacherDashboard() {
         setNewDoc(filename);
         setNewChapter('');
         setChaptersForDoc([]);
+        setTopicsForChapter([]);
+        setNewTopics([]);
         if (!filename) return;
         setChaptersLoading(true);
         try {
@@ -89,14 +94,37 @@ export default function TeacherDashboard() {
         setChaptersLoading(false);
     };
 
+    const handleNewChapterChange = async (chapterName) => {
+        setNewChapter(chapterName);
+        setTopicsForChapter([]);
+        setNewTopics([]);
+        if (!chapterName || !newDoc) return;
+        setTopicsLoading(true);
+        try {
+            const res = await apiService.getEdtechTopics(newDoc, 'en', chapterName);
+            if (res.success && res.topics && res.topics.length > 0) {
+                setTopicsForChapter(res.topics.map(t => t.name || t));
+            }
+        } catch (e) {
+            console.warn('Could not load topics for create form:', e);
+        }
+        setTopicsLoading(false);
+    };
+
+    const toggleNewTopic = (t) => setNewTopics(prev =>
+        prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
+    );
+
+
     const handleCreateClassroom = async () => {
-        if (!newName.trim()) return;
+        if (!newName.trim() || !newDoc || !newChapter || newTopics.length === 0) return;
         setCreateError('');
         try {
-            const res = await apiService.createClassroom(newName, newDesc, newDoc, newChapter);
+            const res = await apiService.createClassroom(newName, newDesc, newDoc, newChapter, newTopics);
             if (res.success) {
                 setShowCreate(false);
-                setNewName(''); setNewDesc(''); setNewDoc(''); setNewChapter(''); setChaptersForDoc([]);
+                setNewName(''); setNewDesc(''); setNewDoc(''); setNewChapter('');
+                setChaptersForDoc([]); setTopicsForChapter([]); setNewTopics([]);
                 loadClassrooms();
             } else {
                 setCreateError(res.detail || res.message || 'Failed to create classroom');
@@ -220,14 +248,14 @@ export default function TeacherDashboard() {
                         })}
                     </select>
 
-                    {/* Step 2: Pick chapter (shown once chapters are loaded) */}
+                    {/* Step 2: Pick chapter */}
                     {chaptersLoading && (
                         <p style={{ color: '#a0a0c0', fontSize: '0.85rem', margin: '6px 0' }}>⏳ Loading chapters…</p>
                     )}
                     {!chaptersLoading && chaptersForDoc.length > 0 && (
-                        <select value={newChapter} onChange={e => setNewChapter(e.target.value)}
+                        <select value={newChapter} onChange={e => handleNewChapterChange(e.target.value)}
                             style={{ marginTop: 6 }}>
-                            <option value="">-- Whole document (all chapters) --</option>
+                            <option value="">-- Select a chapter --</option>
                             {chaptersForDoc.map(ch => (
                                 <option key={ch.name} value={ch.name}>
                                     {ch.name}{ch.page_start ? ` (p.${ch.page_start}–${ch.page_end})` : ''}
@@ -236,12 +264,54 @@ export default function TeacherDashboard() {
                         </select>
                     )}
                     {!chaptersLoading && newDoc && chaptersForDoc.length === 0 && (
-                        <p style={{ color: '#a0a0c0', fontSize: '0.82rem', margin: '6px 0' }}>📄 No chapters detected — whole document will be assigned.</p>
+                        <p style={{ color: '#a0a0c0', fontSize: '0.82rem', margin: '6px 0' }}>📄 No chapters detected — try re-uploading the document.</p>
                     )}
 
-                    <div className="td-form-actions">
-                        <button className="td-btn td-btn-primary" onClick={handleCreateClassroom}>Create</button>
-                        <button className="td-btn td-btn-ghost" onClick={() => { setShowCreate(false); setCreateError(''); setChaptersForDoc([]); setNewChapter(''); }}>Cancel</button>
+                    {/* Step 3: Pick topics */}
+                    {topicsLoading && (
+                        <p style={{ color: '#a0a0c0', fontSize: '0.85rem', margin: '6px 0' }}>⏳ Loading topics…</p>
+                    )}
+                    {!topicsLoading && newChapter && topicsForChapter.length > 0 && (
+                        <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <span style={{ fontSize: '0.82rem', color: '#a0a0c0' }}>Select topics to assign:</span>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button type="button" onClick={() => setNewTopics([...topicsForChapter])}
+                                        style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.4)', borderRadius: 4, color: '#c4b5fd', cursor: 'pointer' }}>
+                                        All
+                                    </button>
+                                    <button type="button" onClick={() => setNewTopics([])}
+                                        style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#a0a0c0', cursor: 'pointer' }}>
+                                        None
+                                    </button>
+                                </div>
+                            </div>
+                            {topicsForChapter.map(t => (
+                                <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: 'pointer', fontSize: '0.88rem' }}>
+                                    <input type="checkbox" checked={newTopics.includes(t)} onChange={() => toggleNewTopic(t)}
+                                        style={{ accentColor: '#8b5cf6' }} />
+                                    {t}
+                                </label>
+                            ))}
+                        </div>
+                    )}
+                    {!topicsLoading && newChapter && topicsForChapter.length === 0 && (
+                        <p style={{ color: '#a0a0c0', fontSize: '0.82rem', margin: '6px 0' }}>📌 No topics found for this chapter.</p>
+                    )}
+
+                    <div className="td-form-actions" style={{ marginTop: 12 }}>
+                        <button
+                            className="td-btn td-btn-primary"
+                            onClick={handleCreateClassroom}
+                            disabled={!newName.trim() || !newDoc || !newChapter || newTopics.length === 0}
+                            style={{ opacity: (!newName.trim() || !newDoc || !newChapter || newTopics.length === 0) ? 0.45 : 1, cursor: (!newName.trim() || !newDoc || !newChapter || newTopics.length === 0) ? 'not-allowed' : 'pointer' }}
+                            title={newTopics.length === 0 ? 'Select at least one topic to continue' : ''}
+                        >Create</button>
+                        <button className="td-btn td-btn-ghost" onClick={() => {
+                            setShowCreate(false); setCreateError('');
+                            setChaptersForDoc([]); setNewChapter('');
+                            setTopicsForChapter([]); setNewTopics([]);
+                        }}>Cancel</button>
                     </div>
                     {createError && (
                         <div style={{ color: '#ff6b6b', fontSize: '0.85rem', marginTop: 8, padding: '6px 10px', background: 'rgba(255,107,107,0.1)', borderRadius: 6 }}>
