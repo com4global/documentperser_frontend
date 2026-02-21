@@ -1094,6 +1094,7 @@ function ChatInterface() {
         .then(({ data }) => setLocalRole(data?.role ?? null));
     });
   }, []);
+  // eslint-disable-next-line no-unused-vars
   const isTeacher = userRole === 'teacher' || localRole === 'teacher';
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
