@@ -19,6 +19,9 @@ export default function TeacherDashboard() {
     const [newName, setNewName] = useState('');
     const [newDesc, setNewDesc] = useState('');
     const [newDoc, setNewDoc] = useState('');
+    const [newChapter, setNewChapter] = useState('');
+    const [chaptersForDoc, setChaptersForDoc] = useState([]);
+    const [chaptersLoading, setChaptersLoading] = useState(false);
     const [createError, setCreateError] = useState('');
 
     // Create assignment — wizard state
@@ -69,14 +72,31 @@ export default function TeacherDashboard() {
 
     useEffect(() => { loadClassrooms(); loadDocuments(); }, [loadClassrooms, loadDocuments]);
 
+    const handleNewDocChange = async (filename) => {
+        setNewDoc(filename);
+        setNewChapter('');
+        setChaptersForDoc([]);
+        if (!filename) return;
+        setChaptersLoading(true);
+        try {
+            const res = await apiService.getEdtechChapters(filename);
+            if (res.success && res.chapters && res.chapters.length > 0) {
+                setChaptersForDoc(res.chapters);
+            }
+        } catch (e) {
+            console.warn('Could not load chapters for create form:', e);
+        }
+        setChaptersLoading(false);
+    };
+
     const handleCreateClassroom = async () => {
         if (!newName.trim()) return;
         setCreateError('');
         try {
-            const res = await apiService.createClassroom(newName, newDesc, newDoc);
+            const res = await apiService.createClassroom(newName, newDesc, newDoc, newChapter);
             if (res.success) {
                 setShowCreate(false);
-                setNewName(''); setNewDesc(''); setNewDoc('');
+                setNewName(''); setNewDesc(''); setNewDoc(''); setNewChapter(''); setChaptersForDoc([]);
                 loadClassrooms();
             } else {
                 setCreateError(res.detail || res.message || 'Failed to create classroom');
@@ -190,16 +210,38 @@ export default function TeacherDashboard() {
                         value={newName} onChange={e => setNewName(e.target.value)} />
                     <input placeholder="Description (optional)"
                         value={newDesc} onChange={e => setNewDesc(e.target.value)} />
-                    <select value={newDoc} onChange={e => setNewDoc(e.target.value)}>
+
+                    {/* Step 1: Pick document */}
+                    <select value={newDoc} onChange={e => handleNewDocChange(e.target.value)}>
                         <option value="">-- Select textbook --</option>
                         {documents.map(d => {
                             const name = d.filename || d.file_name || d;
                             return <option key={name} value={name}>{name}</option>;
                         })}
                     </select>
+
+                    {/* Step 2: Pick chapter (shown once chapters are loaded) */}
+                    {chaptersLoading && (
+                        <p style={{ color: '#a0a0c0', fontSize: '0.85rem', margin: '6px 0' }}>⏳ Loading chapters…</p>
+                    )}
+                    {!chaptersLoading && chaptersForDoc.length > 0 && (
+                        <select value={newChapter} onChange={e => setNewChapter(e.target.value)}
+                            style={{ marginTop: 6 }}>
+                            <option value="">-- Whole document (all chapters) --</option>
+                            {chaptersForDoc.map(ch => (
+                                <option key={ch.name} value={ch.name}>
+                                    {ch.name}{ch.page_start ? ` (p.${ch.page_start}–${ch.page_end})` : ''}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    {!chaptersLoading && newDoc && chaptersForDoc.length === 0 && (
+                        <p style={{ color: '#a0a0c0', fontSize: '0.82rem', margin: '6px 0' }}>📄 No chapters detected — whole document will be assigned.</p>
+                    )}
+
                     <div className="td-form-actions">
                         <button className="td-btn td-btn-primary" onClick={handleCreateClassroom}>Create</button>
-                        <button className="td-btn td-btn-ghost" onClick={() => { setShowCreate(false); setCreateError(''); }}>Cancel</button>
+                        <button className="td-btn td-btn-ghost" onClick={() => { setShowCreate(false); setCreateError(''); setChaptersForDoc([]); setNewChapter(''); }}>Cancel</button>
                     </div>
                     {createError && (
                         <div style={{ color: '#ff6b6b', fontSize: '0.85rem', marginTop: 8, padding: '6px 10px', background: 'rgba(255,107,107,0.1)', borderRadius: 6 }}>
