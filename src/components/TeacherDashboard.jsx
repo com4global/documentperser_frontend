@@ -103,7 +103,11 @@ export default function TeacherDashboard() {
         try {
             const res = await apiService.getEdtechTopics(newDoc, 'en', chapterName);
             if (res.success && res.topics && res.topics.length > 0) {
-                setTopicsForChapter(res.topics.map(t => t.name || t));
+                // topics are objects: { title, description, key_concepts, difficulty, source_document }
+                setTopicsForChapter(res.topics.map(t => {
+                    if (typeof t === 'string') return t;
+                    return t.title || t.name || t.topic || '';
+                }).filter(Boolean));
             }
         } catch (e) {
             console.warn('Could not load topics for create form:', e);
