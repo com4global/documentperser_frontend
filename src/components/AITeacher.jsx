@@ -1151,7 +1151,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                 <>
                                     <div className="ai-teacher-loading-spinner"></div>
                                     <h3>🎬 {t('generatingScript') || 'Generating AI Teaching Video...'}</h3>
-                                    <p>{t('ttsWait') || 'Creating script and generating audio... (5-10 seconds)'}</p>
+                                    <p>⏳ Creating script and generating audio… (may take 10–20 seconds)</p>
                                 </>
                             )}
                         </div>
