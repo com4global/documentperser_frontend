@@ -19,6 +19,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     const [loadingTopics, setLoadingTopics] = useState(false);
     const [error, setError] = useState('');
     const [visibleBubbles, setVisibleBubbles] = useState(0);
+    const [prewarmStatus, setPrewarmStatus] = useState(null); // { status, label, is_ready, lessons_ready }
 
     // Quiz state (per-question tracking)
     const [quizAnswers, setQuizAnswers] = useState({});
@@ -365,23 +366,36 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
         setLoadingTopics(true);
         setTopics([]);
         setError('');
+        setPrewarmStatus(null);
 
+        // Fetch topics AND prewarm status concurrently — no extra latency
+        const [topicsResult, prewarmResult] = await Promise.allSettled([
+            apiService.getEdtechTopics(selectedDoc, language, chapter.name),
+            apiService.getPrewarmStatus(selectedDoc)
+        ]);
+
+        // Handle topics
         try {
-            const result = await apiService.getEdtechTopics(selectedDoc, language, chapter.name);
-            if (result.success && result.topics && result.topics.length > 0) {
+            const result = topicsResult.status === 'fulfilled' ? topicsResult.value : null;
+            if (result && result.success && result.topics && result.topics.length > 0) {
                 setTopics(result.topics);
             } else {
-                setError(result.message || 'No topics could be extracted from this chapter.');
+                setError(result?.message || 'No topics could be extracted from this chapter.');
             }
         } catch (err) {
-            console.error('Failed to load topics:', err);
             const msg = err.message || 'Failed to extract topics';
-            if (msg.includes('timeout') || msg.includes('aborted') || msg.includes('Failed to fetch')) {
-                setError('Topic extraction took too long. Please try again.');
-            } else {
-                setError(`Error: ${msg}`);
+            setError(`Error: ${msg}`);
+        }
+
+        // Handle prewarm status (non-blocking — silently set banner)
+        if (prewarmResult.status === 'fulfilled' && prewarmResult.value?.success) {
+            const ps = prewarmResult.value;
+            // Only show banner if processing or completed (not if not_found/unknown)
+            if (ps.status !== 'not_found' && ps.status !== 'unknown') {
+                setPrewarmStatus(ps);
             }
         }
+
         setLoadingTopics(false);
     };
 
@@ -1037,6 +1051,28 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                 </div>
                             ) : (
                                 <div className="ai-teacher-topics-grid">
+                                    {/* Prewarm readiness banner */}
+                                    {prewarmStatus && (
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', gap: '8px',
+                                            padding: '8px 14px', borderRadius: '20px',
+                                            marginBottom: '12px', gridColumn: '1 / -1',
+                                            fontSize: '13px', fontWeight: 500,
+                                            background: prewarmStatus.is_ready
+                                                ? 'rgba(34,197,94,0.12)' : 'rgba(139,92,246,0.12)',
+                                            border: `1px solid ${prewarmStatus.is_ready
+                                                ? 'rgba(34,197,94,0.3)' : 'rgba(139,92,246,0.3)'}`,
+                                            color: prewarmStatus.is_ready ? '#4ade80' : '#a78bfa',
+                                        }}>
+                                            {prewarmStatus.is_ready ? '⚡' : '⏳'}
+                                            <span>{prewarmStatus.label}</span>
+                                            {prewarmStatus.lessons_ready > 0 && (
+                                                <span style={{ opacity: 0.7 }}>
+                                                    ({prewarmStatus.lessons_ready} lesson{prewarmStatus.lessons_ready !== 1 ? 's' : ''} cached)
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                     {topics.map((topic, idx) => (
                                         <div
                                             key={idx}

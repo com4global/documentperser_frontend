@@ -417,6 +417,19 @@ export const apiService = {
     return handleResponse(response);
   },
 
+  getPrewarmStatus: async (docName) => {
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const url = `${API_URL}/api/prewarm-status${docName ? `?doc_name=${encodeURIComponent(docName)}` : ''}`;
+    try {
+      const response = await fetch(url, { headers });
+      return handleResponse(response);
+    } catch (e) {
+      return { success: false, status: 'unknown' };
+    }
+  },
+
+
   generateLesson: async (topic, language = 'en', docName = '') => {
     const formData = new FormData();
     formData.append('topic', topic);
