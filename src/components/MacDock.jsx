@@ -5,13 +5,13 @@ import '../Styles/MacDock.css';
 // roles: which roles can SEE this item. 'teacher' = teacher, 'student' = student.
 // Items without a role listed for a given role will be hidden for that role.
 const ALL_DOCK_ITEMS = [
-    { id: 'newchat', emoji: '✨', label: 'New Chat', gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)', roles: ['teacher', 'student'] },
-    { id: 'chat', emoji: '💬', label: 'Chat', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', roles: ['teacher', 'student'] },
-    { id: 'upload', emoji: '📤', label: 'Upload', gradient: 'linear-gradient(135deg,#10b981,#059669)', roles: ['teacher'] },          // teacher only
-    { id: 'admin', emoji: '⚙️', label: 'Admin', gradient: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', roles: ['teacher'] },          // teacher only
-    { id: 'legal', emoji: '⚖️', label: 'Legal', gradient: 'linear-gradient(135deg,#8b5cf6,#ec4899)', roles: ['teacher'] },          // teacher only
-    { id: 'teacher', emoji: '🎓', label: 'AI Teacher', gradient: 'linear-gradient(135deg,#f97316,#ef4444)', roles: ['teacher', 'student'] },
-    { id: 'logout', emoji: '🚪', label: 'Logout', gradient: 'linear-gradient(135deg,#6b7280,#4b5563)', roles: ['teacher', 'student'] },
+    { id: 'newchat', emoji: '✨', label: 'New Chat', gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)', roles: ['teacher', 'student', 'individual', 'other'] },
+    { id: 'chat', emoji: '💬', label: 'Chat', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', roles: ['teacher', 'student', 'individual', 'other'] },
+    { id: 'upload', emoji: '📤', label: 'Upload Docs', gradient: 'linear-gradient(135deg,#10b981,#059669)', roles: ['teacher', 'individual', 'other'] },
+    { id: 'admin', emoji: '⚙️', label: 'Admin', gradient: 'linear-gradient(135deg,#3b82f6,#0ea5e9)', roles: ['teacher'] },   // teacher only
+    { id: 'legal', emoji: '⚖️', label: 'Legal', gradient: 'linear-gradient(135deg,#8b5cf6,#ec4899)', roles: ['teacher', 'individual', 'other'] },
+    { id: 'teacher', emoji: '🎓', label: 'AI Teacher', gradient: 'linear-gradient(135deg,#f97316,#ef4444)', roles: ['teacher', 'student', 'individual', 'other'] },
+    { id: 'logout', emoji: '🚪', label: 'Logout', gradient: 'linear-gradient(135deg,#6b7280,#4b5563)', roles: ['teacher', 'student', 'individual', 'other'] },
 ];
 
 /**
