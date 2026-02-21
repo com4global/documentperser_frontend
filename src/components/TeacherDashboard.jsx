@@ -21,11 +21,17 @@ export default function TeacherDashboard() {
     const [newDoc, setNewDoc] = useState('');
     const [createError, setCreateError] = useState('');
 
-    // Create assignment form
+    // Create assignment — wizard state
     const [showAssign, setShowAssign] = useState(false);
-    const [assignChapter, setAssignChapter] = useState('');
-    const [assignTopics, setAssignTopics] = useState('');
-    const [assignDue, setAssignDue] = useState('');
+    const [wizStep, setWizStep] = useState(1); // 1=book, 2=chapter, 3=topics, 4=schedule
+    const [wizDoc, setWizDoc] = useState('');          // selected filename
+    const [docStructure, setDocStructure] = useState(null); // { chapters: [{title, topics}] }
+    const [structureLoading, setStructureLoading] = useState(false);
+    const [wizChapter, setWizChapter] = useState('');  // selected chapter title
+    const [wizTopics, setWizTopics] = useState([]);    // checked topics (string[])
+    const [wizDue, setWizDue] = useState('');
+    const [wizStudent, setWizStudent] = useState(''); // '' = whole class
+    const [wizSaving, setWizSaving] = useState(false);
 
     const [listError, setListError] = useState('');
 
@@ -48,11 +54,17 @@ export default function TeacherDashboard() {
 
     const loadDocuments = useCallback(async () => {
         try {
-            const res = await apiService.getEdtechDocuments();
-            // Handle multiple possible response shapes
+            // Use new dedicated documents endpoint
+            const res = await apiService.getDocuments();
             const docs = res.documents || res.files || res.data || [];
             setDocuments(docs);
-        } catch (e) { console.error('loadDocuments:', e); }
+        } catch (e) {
+            // Fallback to edtech documents if available
+            try {
+                const res2 = await apiService.getEdtechDocuments();
+                setDocuments(res2.documents || res2.files || []);
+            } catch { console.error('loadDocuments:', e); }
+        }
     }, []);
 
     useEffect(() => { loadClassrooms(); loadDocuments(); }, [loadClassrooms, loadDocuments]);
@@ -113,19 +125,51 @@ export default function TeacherDashboard() {
         setLoading(false);
     };
 
-    const handleCreateAssignment = async () => {
-        if (!assignChapter.trim() || !selectedClassroom) return;
+    // ── Wizard helpers ──
+    const openWizard = () => {
+        setWizStep(1); setWizDoc(''); setDocStructure(null);
+        setWizChapter(''); setWizTopics([]); setWizDue(''); setWizStudent('');
+        setShowAssign(true);
+    };
+    const closeWizard = () => setShowAssign(false);
+
+    const handleWizDocChange = async (filename) => {
+        setWizDoc(filename);
+        setDocStructure(null); setWizChapter(''); setWizTopics([]);
+        if (!filename) return;
+        setStructureLoading(true);
         try {
-            const topicsArr = assignTopics.split(',').map(t => t.trim()).filter(Boolean);
+            const res = await apiService.getDocumentStructure(filename);
+            setDocStructure(res);
+        } catch (e) { console.error('structure fetch:', e); }
+        setStructureLoading(false);
+    };
+
+    const toggleTopic = (t) => setWizTopics(prev =>
+        prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
+    );
+
+    const selectAllTopics = (topics) => setWizTopics(topics);
+    const clearTopics = () => setWizTopics([]);
+
+    const handleCreateAssignment = async () => {
+        if (!wizChapter.trim() || !selectedClassroom) return;
+        setWizSaving(true);
+        try {
             const res = await apiService.createAssignment(
-                selectedClassroom.id, assignChapter, topicsArr, assignDue
+                selectedClassroom.id,
+                wizChapter,
+                wizTopics,
+                wizDue,
+                wizDoc,
+                wizStudent
             );
             if (res.success) {
-                setShowAssign(false);
-                setAssignChapter(''); setAssignTopics(''); setAssignDue('');
+                closeWizard();
                 openClassroomDetail(selectedClassroom);
             }
         } catch (e) { console.error(e); }
+        setWizSaving(false);
     };
 
     // ── Render helpers ──
@@ -243,23 +287,147 @@ export default function TeacherDashboard() {
                 <div className="td-subsection">
                     <div className="td-header-row">
                         <h3>📋 Assignments</h3>
-                        <button className="td-btn td-btn-sm td-btn-primary" onClick={() => setShowAssign(true)}>
+                        <button className="td-btn td-btn-sm td-btn-primary" onClick={openWizard}>
                             + Add Assignment
                         </button>
                     </div>
 
                     {showAssign && (
-                        <div className="td-create-form">
-                            <input placeholder="Chapter title (e.g. Chapter 3: Atoms and Molecules)"
-                                value={assignChapter} onChange={e => setAssignChapter(e.target.value)} />
-                            <input placeholder="Topics (comma-separated)"
-                                value={assignTopics} onChange={e => setAssignTopics(e.target.value)} />
-                            <input type="date" placeholder="Due date (optional)"
-                                value={assignDue} onChange={e => setAssignDue(e.target.value)} />
-                            <div className="td-form-actions">
-                                <button className="td-btn td-btn-primary" onClick={handleCreateAssignment}>Create</button>
-                                <button className="td-btn td-btn-ghost" onClick={() => setShowAssign(false)}>Cancel</button>
+                        <div className="td-create-form td-wizard">
+                            {/* ── Step tabs ── */}
+                            <div className="td-wiz-tabs">
+                                {[['1', '📚 Book'], ['2', '📖 Chapter'], ['3', '🏷️ Topics'], ['4', '📅 Schedule']].map(([n, label]) => (
+                                    <span key={n}
+                                        className={`td-wiz-tab${wizStep === +n ? ' active' : wizStep > +n ? ' done' : ''}`}
+                                        onClick={() => wizStep > +n && setWizStep(+n)}
+                                    >{label}</span>
+                                ))}
                             </div>
+
+                            {/* ── Step 1: Book ── */}
+                            {wizStep === 1 && (
+                                <div className="td-wiz-body">
+                                    <h4>Select the textbook / document</h4>
+                                    <select value={wizDoc} onChange={e => handleWizDocChange(e.target.value)} className="td-wiz-select">
+                                        <option value="">-- Choose a processed document --</option>
+                                        {documents.map(d => {
+                                            const name = d.filename || d.file_name || d;
+                                            return <option key={name} value={name}>{name}</option>;
+                                        })}
+                                    </select>
+                                    {structureLoading && <p className="td-muted" style={{ marginTop: 8 }}>⏳ Extracting chapters…</p>}
+                                    <div className="td-wiz-nav">
+                                        <button className="td-btn td-btn-ghost" onClick={closeWizard}>Cancel</button>
+                                        <button className="td-btn td-btn-primary" disabled={!wizDoc || structureLoading}
+                                            onClick={() => setWizStep(2)}>Next →</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Step 2: Chapter ── */}
+                            {wizStep === 2 && (
+                                <div className="td-wiz-body">
+                                    <h4>Select a chapter <span className="td-muted">({wizDoc})</span></h4>
+                                    {docStructure && docStructure.chapters && docStructure.chapters.length > 0 ? (
+                                        <div className="td-wiz-chapter-list">
+                                            {docStructure.chapters.map(ch => (
+                                                <label key={ch.title} className={`td-wiz-chapter-item${wizChapter === ch.title ? ' selected' : ''}`}>
+                                                    <input type="radio" name="chapter" value={ch.title}
+                                                        checked={wizChapter === ch.title}
+                                                        onChange={() => { setWizChapter(ch.title); setWizTopics([]); }} />
+                                                    {ch.title}
+                                                    {ch.topics && ch.topics.length > 0 &&
+                                                        <span className="td-badge" style={{ marginLeft: 8 }}>{ch.topics.length} topics</span>}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <p className="td-muted" style={{ marginBottom: 8 }}>No chapters detected — enter manually:</p>
+                                            <input placeholder="e.g. Chapter 3: Atoms and Molecules"
+                                                value={wizChapter} onChange={e => setWizChapter(e.target.value)} />
+                                        </div>
+                                    )}
+                                    <div className="td-wiz-nav">
+                                        <button className="td-btn td-btn-ghost" onClick={() => setWizStep(1)}>← Back</button>
+                                        <button className="td-btn td-btn-primary" disabled={!wizChapter}
+                                            onClick={() => setWizStep(3)}>Next →</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Step 3: Topics ── */}
+                            {wizStep === 3 && (() => {
+                                const chapter = docStructure?.chapters?.find(c => c.title === wizChapter);
+                                const topics = chapter?.topics || [];
+                                return (
+                                    <div className="td-wiz-body">
+                                        <h4>Select topics <span className="td-muted">from {wizChapter}</span></h4>
+                                        {topics.length > 0 ? (
+                                            <>
+                                                <div className="td-wiz-topic-actions">
+                                                    <button className="td-btn td-btn-ghost" style={{ fontSize: '12px', padding: '2px 8px' }} onClick={() => selectAllTopics(topics)}>Select all</button>
+                                                    <button className="td-btn td-btn-ghost" style={{ fontSize: '12px', padding: '2px 8px' }} onClick={clearTopics}>Clear</button>
+                                                    <span className="td-muted" style={{ fontSize: '12px' }}>{wizTopics.length} selected</span>
+                                                </div>
+                                                <div className="td-wiz-topic-list">
+                                                    {topics.map(t => (
+                                                        <label key={t} className={`td-wiz-topic-item${wizTopics.includes(t) ? ' selected' : ''}`}>
+                                                            <input type="checkbox" checked={wizTopics.includes(t)}
+                                                                onChange={() => toggleTopic(t)} />
+                                                            {t}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div>
+                                                <p className="td-muted" style={{ marginBottom: 8 }}>No topics detected — enter manually (comma-separated):</p>
+                                                <input placeholder="e.g. Photosynthesis, Cell Division"
+                                                    value={wizTopics.join(', ')}
+                                                    onChange={e => setWizTopics(e.target.value.split(',').map(t => t.trim()).filter(Boolean))} />
+                                            </div>
+                                        )}
+                                        <div className="td-wiz-nav">
+                                            <button className="td-btn td-btn-ghost" onClick={() => setWizStep(2)}>← Back</button>
+                                            <button className="td-btn td-btn-primary" onClick={() => setWizStep(4)}>Next →</button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* ── Step 4: Schedule & Assign ── */}
+                            {wizStep === 4 && (
+                                <div className="td-wiz-body">
+                                    <h4>Schedule &amp; Assign</h4>
+                                    <label className="td-wiz-label">Due date (optional)</label>
+                                    <input type="date" value={wizDue} onChange={e => setWizDue(e.target.value)} />
+
+                                    <label className="td-wiz-label" style={{ marginTop: 12 }}>Assign to</label>
+                                    <select value={wizStudent} onChange={e => setWizStudent(e.target.value)} className="td-wiz-select">
+                                        <option value="">🏫 Entire class</option>
+                                        {(selectedClassroom?.students || []).map(s => (
+                                            <option key={s.id} value={s.id}>{s.full_name || s.email}</option>
+                                        ))}
+                                    </select>
+
+                                    {/* Summary */}
+                                    <div className="td-wiz-summary">
+                                        <div><strong>📚 Book:</strong> {wizDoc}</div>
+                                        <div><strong>📖 Chapter:</strong> {wizChapter}</div>
+                                        <div><strong>🏷️ Topics:</strong> {wizTopics.length > 0 ? wizTopics.join(', ') : '(none selected)'}</div>
+                                        <div><strong>👤 Assign to:</strong> {wizStudent ? (selectedClassroom?.students?.find(s => s.id === wizStudent)?.full_name || 'Student') : 'Entire class'}</div>
+                                    </div>
+
+                                    <div className="td-wiz-nav">
+                                        <button className="td-btn td-btn-ghost" onClick={() => setWizStep(3)}>← Back</button>
+                                        <button className="td-btn td-btn-primary" disabled={wizSaving || !wizChapter}
+                                            onClick={handleCreateAssignment}>
+                                            {wizSaving ? '⏳ Saving…' : '✅ Create Assignment'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

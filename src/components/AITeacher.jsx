@@ -4,7 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { APP_CONFIG } from '../utils/constants';
 import '../Styles/AITeacher.css';
 
-const AITeacher = ({ onClose }) => {
+const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComplete = null }) => {
     const { t, language } = useLanguage();
     const [view, setView] = useState('documents'); // documents | chapters | topics | mode-select | loading | lesson | video-loading | video
     const [documents, setDocuments] = useState([]);
@@ -68,6 +68,10 @@ const AITeacher = ({ onClose }) => {
     const [endSessionQA, setEndSessionQA] = useState(false);       // are we in end-of-session Q&A phase?
     const [endSessionPhase, setEndSessionPhase] = useState('');    // 'prompting' | 'listening' | 'answering' | 'thanking'
     const [endSessionAnswer, setEndSessionAnswer] = useState('');
+
+    // Store onActivityComplete in a ref so async/audio handlers always see the latest value
+    const onActivityCompleteRef = useRef(onActivityComplete);
+    useEffect(() => { onActivityCompleteRef.current = onActivityComplete; }, [onActivityComplete]);
     const [endSessionQuestion, setEndSessionQuestion] = useState('');
     const [endSessionTyped, setEndSessionTyped] = useState('');
     const endSessionAudioRef = useRef(null); // for prompt and thank-you TTS
@@ -228,9 +232,21 @@ const AITeacher = ({ onClose }) => {
         setIsTtsPlaying(false);
     };
 
-    // Load documents on mount
+    // Load documents on mount; jump ahead if initialDoc / initialTopic provided
     useEffect(() => {
-        loadDocuments();
+        if (initialDoc) {
+            setSelectedDoc(initialDoc);
+            if (initialTopic) {
+                setSelectedTopic(initialTopic);
+                setView('mode-select');
+            } else {
+                // Pre-selected doc, but no topic — show chapters
+                selectDocument(initialDoc);
+            }
+        } else {
+            loadDocuments();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Animate dialogue bubbles + auto-play audio sequentially (wait for each to finish)
@@ -273,6 +289,8 @@ const AITeacher = ({ onClose }) => {
                 // Use the ref (not state) — state is a stale closure here
                 if (!cancelled && !isAskingDoubtRef.current) {
                     triggerEndOfSessionQA();
+                    // ── Progress: mark conversation completed ──
+                    if (onActivityCompleteRef.current) onActivityCompleteRef.current('conversation', 0);
                 }
             };
 
@@ -593,8 +611,18 @@ const AITeacher = ({ onClose }) => {
 
     const handleQuizAnswer = (quizIndex, optionIndex) => {
         if (quizAnswers[quizIndex] !== undefined) return;
-        setQuizAnswers(prev => ({ ...prev, [quizIndex]: optionIndex }));
+        const newAnswers = { ...quizAnswers, [quizIndex]: optionIndex };
+        setQuizAnswers(newAnswers);
         setShowExplanations(prev => ({ ...prev, [quizIndex]: true }));
+
+        // Check if all questions answered → report quiz completion
+        const quiz = lesson?.quiz || [];
+        if (quiz.length > 0 && Object.keys(newAnswers).length === quiz.length) {
+            const correct = quiz.filter((q, i) => newAnswers[i] === q.correct).length;
+            const score = Math.round((correct / quiz.length) * 100);
+            // Pass newAnswers so the parent can store them (proves quiz was taken)
+            if (onActivityCompleteRef.current) onActivityCompleteRef.current('quiz', score, newAnswers);
+        }
     };
 
     const handleAskQuestion = async () => {
@@ -1206,16 +1234,20 @@ const AITeacher = ({ onClose }) => {
                                 onEnded={() => {
                                     setIsTtsPlaying(false);
                                     if (sentenceTimerRef.current) clearInterval(sentenceTimerRef.current);
-                                    // Show the very last subtitle so user can read it,
-                                    // then trigger Q&A after a short pause
                                     setCurrentSentenceIdx(ttsSentences.length - 1);
-                                    setTimeout(() => {
-                                        if (!isAskingDoubtRef.current) {
-                                            triggerEndOfSessionQA();
-                                        }
-                                    }, 3000); // 3-second reading pause before Q&A
+                                    // ── Progress: mark video completed (use ref to avoid stale closure) ──
+                                    if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+                                    // Start Q&A immediately — no delay
+                                    if (!isAskingDoubtRef.current) {
+                                        triggerEndOfSessionQA();
+                                    }
                                 }}
-                                onPlay={() => { setIsTtsPlaying(true); startSentenceSync(); }}
+                                onPlay={() => {
+                                    setIsTtsPlaying(true);
+                                    startSentenceSync();
+                                    // Mark video as watched as soon as student presses play
+                                    if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+                                }}
                                 onPause={() => { setIsTtsPlaying(false); }}
                             />
 
@@ -1243,7 +1275,7 @@ const AITeacher = ({ onClose }) => {
                                 </button>
                             </div>
 
-                            {/* Full script / conversation toggle */}
+                            {/* Full script / conversation toggle + mark watched */}
                             <div className="ai-teacher-video-actions">
                                 <button
                                     className="ai-teacher-qa-btn"
@@ -1252,6 +1284,31 @@ const AITeacher = ({ onClose }) => {
                                     {showTtsScript ? '🎬' : '🎙️'} {showTtsScript
                                         ? (t('hideScript') || 'Hide Script')
                                         : (t('alsoViewConversation') || 'View Full Script as Text')}
+                                </button>
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', borderColor: 'rgba(52,211,153,0.3)' }}
+                                    onClick={() => {
+                                        if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+                                    }}
+                                >
+                                    ✅ Mark as Watched
+                                </button>
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    style={{
+                                        background: 'linear-gradient(135deg, rgba(52,211,153,0.25), rgba(16,185,129,0.15))',
+                                        color: '#34d399',
+                                        borderColor: 'rgba(52,211,153,0.4)',
+                                        fontWeight: 600
+                                    }}
+                                    onClick={() => {
+                                        if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+                                        stopAllAudio();
+                                        onClose();
+                                    }}
+                                >
+                                    ✅ Complete &amp; Close
                                 </button>
                             </div>
 
@@ -1501,6 +1558,27 @@ const AITeacher = ({ onClose }) => {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Complete Session button — shows after all quiz answered */}
+                                    {lesson.quiz && Object.keys(quizAnswers).length >= (Array.isArray(lesson.quiz) ? lesson.quiz.length : 1) && (
+                                        <div style={{ textAlign: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <button
+                                                className="ai-teacher-qa-btn"
+                                                style={{
+                                                    background: 'linear-gradient(135deg, rgba(52,211,153,0.25), rgba(16,185,129,0.15))',
+                                                    color: '#34d399',
+                                                    borderColor: 'rgba(52,211,153,0.4)',
+                                                    padding: '12px 32px',
+                                                    fontSize: '15px',
+                                                    fontWeight: 600
+                                                }}
+                                                onClick={() => { stopAllAudio(); onClose(); }}
+                                            >
+                                                ✅ Complete &amp; Close
+                                            </button>
+                                            <p style={{ color: '#64748b', fontSize: '12px', marginTop: '8px' }}>Progress will update automatically</p>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>

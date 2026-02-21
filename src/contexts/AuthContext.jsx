@@ -172,6 +172,7 @@ export const AuthProvider = ({ children }) => {
     // helpers
     fetchUserInfo,
     fetchUserRole,
+    setUserRole,   // exposed so RolePickerModal can update in-place
     authenticatedFetch,
     getAccessToken,
     clearError,

@@ -125,6 +125,15 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function AppContent() {
+  const { session, userRole, loading } = useAuth();
+  const location = useLocation();
+
+  // Redirect to role-select page if signed in but no role set yet
+  const needsRole = !loading && !!session && !userRole;
+  if (needsRole && location.pathname !== '/select-role') {
+    return <Navigate to="/select-role" replace />;
+  }
+
   return (
     <div className="App">
       <Routes>

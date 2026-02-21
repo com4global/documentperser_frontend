@@ -668,8 +668,218 @@
         padding: 16px;
     }
 
+
     .td-topbar,
     .sd-topbar {
         padding: 16px;
     }
+}
+
+/* ══════════════════════════════════
+   Assignment Wizard
+══════════════════════════════════ */
+
+.td-wizard {
+    border: 1px solid rgba(139, 92, 246, 0.35) !important;
+    background: rgba(20, 16, 40, 0.85) !important;
+    padding: 0 !important;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+/* Tab row */
+.td-wiz-tabs {
+    display: flex;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.td-wiz-tab {
+    flex: 1;
+    text-align: center;
+    padding: 12px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.35);
+    cursor: default;
+    user-select: none;
+    transition: color 0.2s, background 0.2s;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.td-wiz-tab:last-child {
+    border-right: none;
+}
+
+.td-wiz-tab.active {
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.15);
+}
+
+.td-wiz-tab.done {
+    color: #4ade80;
+    cursor: pointer;
+}
+
+.td-wiz-tab.done:hover {
+    background: rgba(74, 222, 128, 0.08);
+}
+
+/* Step body */
+.td-wiz-body {
+    padding: 20px 24px 16px;
+}
+
+.td-wiz-body h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 14px;
+}
+
+.td-wiz-body input,
+.td-wiz-select {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #e0e0e0;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.td-wiz-body input:focus,
+.td-wiz-select:focus {
+    border-color: #a78bfa;
+}
+
+.td-wiz-select option {
+    background: #1e1a3a;
+}
+
+/* Chapter list */
+.td-wiz-chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-bottom: 12px;
+}
+
+.td-wiz-chapter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #ccc;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.td-wiz-chapter-item:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.td-wiz-chapter-item.selected {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: #a78bfa;
+    color: #fff;
+}
+
+.td-wiz-chapter-item input[type='radio'] {
+    accent-color: #a78bfa;
+}
+
+/* Topic list */
+.td-wiz-topic-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.td-wiz-topic-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-bottom: 12px;
+}
+
+.td-wiz-topic-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #ccc;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.td-wiz-topic-item:hover {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.td-wiz-topic-item.selected {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: #a78bfa;
+    color: #fff;
+}
+
+.td-wiz-topic-item input[type='checkbox'] {
+    accent-color: #a78bfa;
+}
+
+/* Summary card */
+.td-wiz-summary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: #ccc;
+    margin-top: 14px;
+}
+
+.td-wiz-summary strong {
+    color: #a78bfa;
+}
+
+/* Wizard label */
+.td-wiz-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+/* Nav buttons */
+.td-wiz-nav {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }

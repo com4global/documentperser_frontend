@@ -1,13 +1,14 @@
 /**
  * RoleSelectPage
  * Shown after first login when no role has been set yet.
- * Allows the user to pick their role, saves it via the backend, then navigates.
+ * Uses optimistic navigation: updates AuthContext & navigates immediately,
+ * then persists to the backend in the background.
  */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import '../Styles/AuthModal.css'; // re-use the role card styles
+import { apiService } from '../services/api';
+import '../Styles/AuthModal.css';
 
 const ROLES = [
     { id: 'student', icon: '🎒', label: 'Student', desc: 'Learn from assigned topics' },
@@ -23,23 +24,31 @@ function destFor(role) {
 }
 
 export default function RoleSelectPage() {
-    const navigate = useNavigate();
-    const { fetchUserRole, user } = useAuth();
     const [selected, setSelected] = useState(null);
     const [saving, setSaving] = useState(false);
+    const navigate = useNavigate();
+    const { setUserRole } = useAuth();
 
-    const handleSelect = async (roleId) => {
+    const handleSelect = (roleId) => {
+        if (saving) return;
         setSelected(roleId);
         setSaving(true);
-        try {
-            await apiService.updateUserRole(roleId);
-            // refresh role in context
-            if (user) await fetchUserRole(user.id);
-        } catch (e) {
-            console.warn('Role update failed (non-fatal):', e);
-        }
+
+        // ── Step 1: Optimistic update ──────────────────────────────────────
+        // Update AuthContext immediately so the route guard (needsRole) is
+        // satisfied BEFORE we navigate. Navigation won't bounce back to /select-role.
+        setUserRole(roleId);
+
+        // ── Step 2: Navigate immediately ───────────────────────────────────
         navigate(destFor(roleId), { replace: true });
-        setSaving(false);
+
+        // ── Step 3: Persist in background ─────────────────────────────────
+        // Fire-and-forget — failure is non-fatal because the role is already
+        // set in context for this session. On next login AuthContext will
+        // re-read from Supabase (which the backend updates using service key).
+        apiService.updateUserRole(roleId).catch((err) => {
+            console.warn('Background role save failed (non-fatal):', err.message);
+        });
     };
 
     return (
@@ -74,14 +83,16 @@ export default function RoleSelectPage() {
                         <button
                             key={r.id}
                             className={`role-card ${selected === r.id ? 'selected' : ''} ${saving ? 'disabled' : ''}`}
-                            onClick={() => !saving && handleSelect(r.id)}
+                            onClick={() => handleSelect(r.id)}
                             disabled={saving}
                         >
                             <span className="role-card-icon">{r.icon}</span>
                             <span className="role-card-label">{r.label}</span>
                             <span className="role-card-desc">{r.desc}</span>
                             {selected === r.id && saving && (
-                                <span style={{ fontSize: '0.75rem', color: '#a78bfa', marginTop: 4 }}>Saving…</span>
+                                <span style={{ fontSize: '0.75rem', color: '#a78bfa', marginTop: 4 }}>
+                                    Saving…
+                                </span>
                             )}
                         </button>
                     ))}

@@ -559,14 +559,25 @@ export const apiService = {
     return authenticatedFetch(`/api/classrooms/${classroomId}`);
   },
 
-  async createAssignment(classroomId, chapterTitle, topics = [], dueDate = '') {
+  async createAssignment(classroomId, chapterTitle, topics = [], dueDate = '', docName = '', studentId = '') {
     const formData = new FormData();
     formData.append('chapter_title', chapterTitle);
     formData.append('topics', JSON.stringify(topics));
     formData.append('due_date', dueDate);
+    formData.append('doc_name', docName);
+    formData.append('student_id', studentId);
     return authenticatedFetch(`/api/classrooms/${classroomId}/assignments`, {
       method: 'POST', body: formData
     });
+  },
+
+  // ---- Documents / Book Structure ----
+  async getDocuments() {
+    return authenticatedFetch('/api/documents');
+  },
+
+  async getDocumentStructure(filename) {
+    return authenticatedFetch(`/api/documents/${encodeURIComponent(filename)}/structure`);
   },
 
   async updateProgress(classroomId, topic, activityType, quizScore = 0, quizAnswers = {}) {
