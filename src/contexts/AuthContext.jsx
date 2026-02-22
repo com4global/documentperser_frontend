@@ -20,13 +20,18 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true); // true until role is fetched
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
 
 
   // Fetch role from profiles table
   const fetchUserRole = useCallback(async (userId) => {
-    if (!userId) return null;
+    if (!userId) {
+      setRoleLoading(false);
+      return null;
+    }
+    setRoleLoading(true);
     try {
       const { data } = await supabase
         .from('profiles')
@@ -38,6 +43,8 @@ export const AuthProvider = ({ children }) => {
       return role;
     } catch {
       return null;
+    } finally {
+      setRoleLoading(false);
     }
   }, []);
 
@@ -46,14 +53,23 @@ export const AuthProvider = ({ children }) => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) fetchUserRole(s.user.id);
+      if (s?.user) {
+        fetchUserRole(s.user.id); // roleLoading managed inside fetchUserRole
+      } else {
+        setRoleLoading(false); // no user → no role to fetch
+      }
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) fetchUserRole(s.user.id); else setUserRole(null);
+      if (s?.user) {
+        fetchUserRole(s.user.id);
+      } else {
+        setUserRole(null);
+        setRoleLoading(false);
+      }
       setLoading(false);
 
       if (s?.access_token) {
@@ -158,6 +174,7 @@ export const AuthProvider = ({ children }) => {
     user,
     session,
     loading,
+    roleLoading,   // ← NEW: true while role is being fetched from Supabase
     error,
     userRole,
     isAuthenticated: !!session,

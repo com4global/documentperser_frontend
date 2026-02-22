@@ -113,10 +113,14 @@ import './App.css';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { session } = useAuth();
+  const { session, loading, roleLoading } = useAuth();
   const location = useLocation();
 
-  // Wait for loading? We might need a loading state in AuthContext passed down
+  // Wait for auth + role to fully initialize before evaluating session.
+  // Without this, refreshing any protected page briefly shows /login because
+  // Supabase hasn't restored the session from storage yet.
+  if (loading || roleLoading) return null; // AppContent renders the spinner above
+
   if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -125,11 +129,32 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function AppContent() {
-  const { session, userRole, loading } = useAuth();
+  const { session, userRole, loading, roleLoading } = useAuth();
   const location = useLocation();
 
+  // Show a full-screen loader while session OR role is still being determined.
+  // Without this gate, userRole=null during the async fetch causes a premature
+  // redirect to /select-role on every page refresh.
+  if (loading || roleLoading) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', background: '#0f0f1a'
+      }}>
+        <div style={{ textAlign: 'center', color: '#8b5cf6' }}>
+          <div style={{
+            width: '40px', height: '40px', border: '3px solid rgba(139,92,246,0.3)',
+            borderTop: '3px solid #8b5cf6', borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite', margin: '0 auto 12px'
+          }} />
+          <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Redirect to role-select page if signed in but no role set yet
-  const needsRole = !loading && !!session && !userRole;
+  const needsRole = !!session && !userRole;
   if (needsRole && location.pathname !== '/select-role') {
     return <Navigate to="/select-role" replace />;
   }
