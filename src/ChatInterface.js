@@ -1094,8 +1094,10 @@ function ChatInterface() {
         .then(({ data }) => setLocalRole(data?.role ?? null));
     });
   }, []);
+  // Resolve the effective role: AuthContext (fastest) → Supabase localRole → 'all' (show everything while loading)
+  const effectiveRole = userRole || localRole || 'all';
   // eslint-disable-next-line no-unused-vars
-  const isTeacher = userRole === 'teacher' || localRole === 'teacher';
+  const isTeacher = effectiveRole === 'teacher';
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
   const [showAITeacher, setShowAITeacher] = useState(false);
@@ -1614,7 +1616,7 @@ function ChatInterface() {
       {/* macOS Dock — fixed at bottom */}
       <MacDock
         activeView={activeView}
-        role={localRole || 'student'}
+        role={effectiveRole}
         onNewChat={startNewChat}
         onNavigate={handleDockNavigate}
         onUploadClick={() => fileInputRef.current?.click()}
