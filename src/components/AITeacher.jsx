@@ -53,6 +53,10 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     const sentenceTimerRef = useRef(null);
     const dialogueAudioRef = useRef(null);
 
+    // ── Video generation step tracker (for animated progress UI) ──
+    const [loadingStep, setLoadingStep] = useState(0);
+    // 0=idle, 1=searching content, 2=writing script, 3=generating audio
+
     // ── Interactive Voice Q&A ("Raise Hand") state ──
     const [isAskingDoubt, setIsAskingDoubt] = useState(false);   // mic is listening
     const [doubtTranscript, setDoubtTranscript] = useState('');  // what user said
@@ -399,6 +403,22 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
         setLoadingTopics(false);
     };
 
+    // ── Silent Pre-fetch: when topics appear, fire-and-forget TTS requests ──
+    // By the time the user clicks a topic, the video is already cached server-side.
+    useEffect(() => {
+        if (topics.length === 0 || !selectedDoc) return;
+        const controller = new AbortController();
+        // Stagger requests to avoid hammering the server
+        topics.slice(0, 5).forEach((topic, i) => {
+            setTimeout(() => {
+                if (controller.signal.aborted) return;
+                apiService.generateTTSVideo(topic.title || topic, selectedDoc, language)
+                    .catch(() => { }); // fire-and-forget — result gets cached server-side
+            }, i * 3000); // 3s apart to respect OpenAI rate limits
+        });
+        return () => controller.abort(); // cancel on unmount / chapter change
+    }, [topics, selectedDoc, language]);
+
     // Select a topic → show mode selection (Conversation vs Video)
     const selectTopic = async (topicTitle) => {
         setSelectedTopic(topicTitle);
@@ -449,9 +469,18 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
         setTtsScript('');
         setCurrentSentenceIdx(0);
         setIsTtsPlaying(false);
+        setLoadingStep(1); // Step 1: searching content
 
         try {
+            // Simulate step progression for UX feedback
+            const stepTimer = setTimeout(() => setLoadingStep(2), 3000);  // Step 2: writing script
+            const stepTimer2 = setTimeout(() => setLoadingStep(3), 8000); // Step 3: generating audio
+
             const result = await apiService.generateTTSVideo(selectedTopic, selectedDoc, language);
+
+            clearTimeout(stepTimer);
+            clearTimeout(stepTimer2);
+            setLoadingStep(0);
 
             if (result.success && result.status === 'completed') {
                 setTtsSentences(result.sentences || []);
@@ -1170,6 +1199,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                         <div className="ai-teacher-loading">
                             <button className="ai-teacher-back-btn" onClick={() => {
                                 if (videoPollingRef.current) clearInterval(videoPollingRef.current);
+                                setLoadingStep(0);
                                 setView('mode-select');
                             }}>
                                 ← {t('backToModes') || 'Back'}
@@ -1186,8 +1216,49 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                             ) : (
                                 <>
                                     <div className="ai-teacher-loading-spinner"></div>
-                                    <h3>🎬 {t('generatingScript') || 'Generating AI Teaching Video...'}</h3>
-                                    <p>⏳ Creating script and generating audio… (may take 10–20 seconds)</p>
+                                    <h3 style={{ marginBottom: '24px' }}>🎬 Preparing Your AI Lesson...</h3>
+                                    {/* Animated step indicators */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '320px' }}>
+                                        {[
+                                            { step: 1, icon: '🔍', label: 'Finding relevant content' },
+                                            { step: 2, icon: '✍️', label: 'Writing teaching script' },
+                                            { step: 3, icon: '🔊', label: 'Generating audio narration' },
+                                        ].map(({ step, icon, label }) => {
+                                            const done = loadingStep > step;
+                                            const active = loadingStep === step;
+                                            const pending = loadingStep < step;
+                                            return (
+                                                <div key={step} style={{
+                                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                                    padding: '10px 16px', borderRadius: '12px',
+                                                    background: done ? 'rgba(34,197,94,0.15)'
+                                                        : active ? 'rgba(139,92,246,0.2)'
+                                                            : 'rgba(255,255,255,0.05)',
+                                                    border: `1px solid ${done ? 'rgba(34,197,94,0.4)'
+                                                            : active ? 'rgba(139,92,246,0.5)'
+                                                                : 'rgba(255,255,255,0.08)'}`,
+                                                    transition: 'all 0.4s ease',
+                                                    opacity: pending ? 0.45 : 1,
+                                                }}>
+                                                    <span style={{ fontSize: '20px', minWidth: '24px', textAlign: 'center' }}>
+                                                        {done ? '✅' : active ? <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⌛</span> : icon}
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: '0.9rem', fontWeight: active ? 600 : 400,
+                                                        color: done ? '#4ade80' : active ? '#c4b5fd' : '#94a3b8'
+                                                    }}>{label}</span>
+                                                    {active && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#8b5cf6' }}>In progress...</span>}
+                                                    {done && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#4ade80' }}>Done ✓</span>}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <p style={{ marginTop: '20px', fontSize: '0.8rem', color: '#64748b' }}>
+                                        {loadingStep === 0 ? 'Starting...' :
+                                            loadingStep === 1 ? 'Searching your document for relevant content…' :
+                                                loadingStep === 2 ? 'Writing an engaging teaching script…' :
+                                                    'Almost there! Converting script to audio…'}
+                                    </p>
                                 </>
                             )}
                         </div>
