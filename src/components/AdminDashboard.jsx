@@ -97,28 +97,55 @@ export default function AdminDashboard() {
 
   const handleUpload = async (type, data, mediaType, onProgress) => {
     setUploading(true);
-    showNotification('Processing upload...', STATUS_TYPES.PROCESSING);
+    showNotification('Uploading...', STATUS_TYPES.PROCESSING);
 
     try {
       if (type === 'youtube') {
         await apiService.processYoutube(data);
         showNotification('🎉 YouTube video successfully processed!', STATUS_TYPES.SUCCESS);
+        await fetchDashboardData();
       } else {
-        await apiService.uploadFile(data, onProgress);
-        showNotification('✅ File uploaded successfully!', STATUS_TYPES.SUCCESS);
+        // Step 1: Upload the file
+        const uploadResult = await apiService.uploadFile(data, onProgress);
+        const filename = uploadResult?.file_name ?? uploadResult?.filename ?? uploadResult?.file?.file_name ?? data?.name;
+
+        setSelectedFile(null);
+        await new Promise(r => setTimeout(r, 600)); // let Supabase commit metadata
+        await fetchDashboardData();
+
+        if (!filename) {
+          showNotification('✅ File uploaded!', STATUS_TYPES.SUCCESS);
+          return;
+        }
+
+        // Step 2: Auto-trigger vectorization immediately
+        showNotification(`⚙️ Vectorizing ${filename}...`, STATUS_TYPES.PROCESSING);
+        try {
+          const processResult = await apiService.processFile(filename);
+          const batchJobId = processResult?.batch_job_id;
+
+          setBatchJobs(prev => ({
+            ...prev,
+            [filename]: { status: 'queued', progress: 0, batch_job_id: batchJobId, status_label: 'Vectorizing...' }
+          }));
+
+          showNotification(
+            `✅ ${filename} uploaded & vectorization started!`,
+            STATUS_TYPES.SUCCESS
+          );
+          await fetchDashboardData();
+        } catch (processErr) {
+          // Upload succeeded but process failed — show warning so user can retry with Process button
+          showNotification(`⚠️ Uploaded but vectorization failed: ${processErr.message}`, STATUS_TYPES.ERROR);
+        }
       }
-      
-      setSelectedFile(null);
-      await fetchDashboardData();
     } catch (error) {
-      showNotification(
-        `❌ Upload failed: ${error.message}`, 
-        STATUS_TYPES.ERROR
-      );
+      showNotification(`❌ Upload failed: ${error.message}`, STATUS_TYPES.ERROR);
     } finally {
       setUploading(false);
     }
   };
+
 
   // ── Batch Job Tracking ──
   const [batchJobs, setBatchJobs] = useState({});
