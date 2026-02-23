@@ -1672,11 +1672,11 @@ function ChatInterface() {
         </>
       </div>
 
-      {/* Side Dock — left, for teachers AND students */}
-      {(localRole === 'teacher' || localRole === 'student') && (
+      {/* Side Dock — left, for teachers AND students (also 'user' / 'all' fallback) */}
+      {(['teacher', 'student', 'user', 'all'].includes(effectiveRole)) && (
         <SideDock
-          role={localRole}
-          onClassroom={() => navigate(localRole === 'teacher' ? '/teacher' : '/student')}
+          role={effectiveRole === 'student' ? 'student' : 'teacher'}
+          onClassroom={() => navigate(effectiveRole === 'student' ? '/student' : '/teacher')}
         />
       )}
 

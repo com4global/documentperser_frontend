@@ -41,11 +41,15 @@ export default function MacDock({
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [bouncingId, setBouncingId] = useState(null);
 
-    // role==='all' means show everything (e.g. while role is still loading)
+    // role==='all' or 'user' means show everything (e.g. while role is still loading
+    // or the profile still has the default 'user' value from the DB trigger)
     // Otherwise only show items that list the current role
-    const DOCK_ITEMS = role === 'all'
+    const DOCK_ITEMS = (role === 'all' || role === 'user')
         ? ALL_DOCK_ITEMS
         : ALL_DOCK_ITEMS.filter(item => item.roles.includes(role));
+
+    // DEBUG — remove after fixing
+    console.log('[MacDock] role=', role, 'items=', DOCK_ITEMS.length, DOCK_ITEMS.map(i => i.id));
 
     const getScale = (index) => {
         if (hoveredIndex === null) return 1;
