@@ -443,6 +443,14 @@ export const apiService = {
     return handleResponse(response);
   },
 
+  checkLessonAudioStatus: async (topic, docName = '', language = 'en') => {
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const params = new URLSearchParams({ topic, doc_name: docName, language });
+    const response = await fetch(`${API_URL}/api/edtech/lesson-audio-status?${params.toString()}`, { headers });
+    return handleResponse(response);
+  },
+
   // D-ID realistic avatar video for Individual Learner role
   generateDIDVideo: async (topic, language = 'en', docName = '') => {
     const formData = new FormData();

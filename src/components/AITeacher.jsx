@@ -297,11 +297,8 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                 }
 
                 // All dialogue bubbles finished — trigger end-of-session Q&A
-                // (skip if user is currently in the doubt panel)
-                // Use the ref (not state) — state is a stale closure here
                 if (!cancelled && !isAskingDoubtRef.current) {
                     triggerEndOfSessionQA();
-                    // ── Progress: mark conversation completed ──
                     if (onActivityCompleteRef.current) onActivityCompleteRef.current('conversation', 0);
                 }
             };
@@ -309,7 +306,6 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
             playSequence();
             return () => {
                 cancelled = true;
-                // Stop any currently-playing dialogue audio immediately
                 if (dialogueAudioRef.current) {
                     dialogueAudioRef.current.pause();
                     dialogueAudioRef.current.src = '';
