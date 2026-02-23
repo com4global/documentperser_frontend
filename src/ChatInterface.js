@@ -1077,6 +1077,7 @@ import AdminDashboard from './components/AdminDashboard';
 import LegalAnalyzer from './components/LegalAnalyzer';
 import AITeacher from './components/AITeacher';
 import MacDock, { SideDock } from './components/MacDock';
+import PricingModal from './components/PricingModal';
 import { useAuth } from './contexts/AuthContext';
 import { supabase } from './supabaseClient';
 import { useLanguage } from './contexts/LanguageContext';
@@ -1101,7 +1102,57 @@ function ChatInterface() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
   const [showAITeacher, setShowAITeacher] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [userPlan, setUserPlan] = useState('free');
   const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
+
+  // Load subscription plan on mount
+  useEffect(() => {
+    const fetchPlan = async () => {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!s?.access_token) return;
+        const res = await fetch(`${API_URL}/api/billing/status`, {
+          headers: { Authorization: `Bearer ${s.access_token}` }
+        });
+        if (res.ok) {
+          const d = await res.json();
+          setUserPlan(d.plan || 'free');
+        }
+      } catch (e) { /* silent */ }
+    };
+    fetchPlan();
+  }, [API_URL]);
+
+  // After returning from Stripe Checkout, verify the session and update the plan
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    if (!sessionId) return;
+
+    // Scrub the param from the URL immediately so we don't re-trigger on refresh
+    window.history.replaceState({}, '', window.location.pathname);
+
+    const verifySession = async () => {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!s?.access_token) return;
+        const res = await fetch(`${API_URL}/api/billing/verify-session`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${s.access_token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.plan) setUserPlan(d.plan);
+        }
+      } catch (e) { /* silent */ }
+    };
+    verifySession();
+  }, [API_URL]);
 
   const [messages, setMessages] = useState([
     {
@@ -1255,6 +1306,7 @@ function ChatInterface() {
     setShowAdminPanel(view === 'admin');
     setShowLegalAnalyzer(view === 'legal');
     setShowAITeacher(view === 'teacher');
+    if (view === 'pricing') setShowPricingModal(true);
   };
 
   return (
@@ -1296,6 +1348,21 @@ function ChatInterface() {
                 <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.72)', fontWeight: 400 }}>
                   {t('poweredBy')}
                 </p>
+                {/* Plan badge */}
+                <button
+                  onClick={() => setShowPricingModal(true)}
+                  style={{
+                    marginTop: '4px', padding: '2px 10px', borderRadius: '20px', border: 'none',
+                    background: userPlan === 'corporate' ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+                      : userPlan === 'plus' ? 'linear-gradient(135deg,#8b5cf6,#6d28d9)'
+                      : userPlan === 'pro' ? 'linear-gradient(135deg,#6366f1,#4338ca)'
+                      : 'rgba(255,255,255,0.12)',
+                    color: '#fff', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em',
+                    cursor: 'pointer', textTransform: 'uppercase'
+                  }}
+                >
+                  {userPlan} plan
+                </button>
               </div>
             </div>
             <LanguageSwitcher />
@@ -1727,6 +1794,11 @@ function ChatInterface() {
       {/* AI Teacher Modal */}
       {showAITeacher && (
         <AITeacher onClose={() => setShowAITeacher(false)} />
+      )}
+
+      {/* Pricing Modal */}
+      {showPricingModal && (
+        <PricingModal onClose={() => setShowPricingModal(false)} />
       )}
     </div>
   );

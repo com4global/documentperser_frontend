@@ -76,9 +76,30 @@ export default function LandingPage() {
   ];
 
   const pricingPlans = [
-    { name: 'Student', price: 'Free', period: '', description: 'For individual learners', features: ['Unlimited lessons', 'Voice Q&A', 'Smart quizzes', '5 documents', 'Progress tracking'], cta: 'Start Learning Free', popular: false },
-    { name: 'Teacher', price: '$49', period: '/month', description: 'For educators & tutors', features: ['Unlimited classrooms', 'Student dashboard', 'Assignment management', 'Unlimited documents', 'Progress analytics', 'Web URL ingestion', 'Priority support'], cta: 'Start Free Trial', popular: true },
-    { name: 'Institution', price: 'Custom', period: '', description: 'For schools & universities', features: ['Unlimited teachers', 'Unlimited students', 'Custom branding', 'SSO integration', 'Dedicated support', 'SLA guarantee', 'On-premise option', 'Admin dashboard'], cta: 'Contact Sales', popular: false }
+    {
+      name: 'Free', price: '$0', period: '/mo', description: 'Get started, no credit card needed',
+      features: ['10 MB document uploads', '200 RAG chunks', 'Basic AI chat', '1 document at a time'],
+      cta: 'Start Free', popular: false, planKey: 'free',
+      accent: '#64748b', gradient: 'linear-gradient(135deg,#334155,#1e293b)'
+    },
+    {
+      name: 'Pro', price: '$25', period: '/mo', description: 'For professionals who need more power',
+      features: ['100 MB document uploads', '2,000 RAG chunks', 'AI Teacher videos', 'Legal Analysis', 'Priority support'],
+      cta: 'Upgrade to Pro', popular: false, planKey: 'pro',
+      accent: '#6366f1', gradient: 'linear-gradient(135deg,#312e81,#1e1b4b)'
+    },
+    {
+      name: 'Plus', price: '$60', period: '/mo', description: 'For power users and small teams',
+      features: ['500 MB document uploads', '10,000 RAG chunks', 'All Pro features', 'Multiple document sessions', 'Advanced analytics'],
+      cta: 'Upgrade to Plus', popular: true, planKey: 'plus',
+      accent: '#8b5cf6', gradient: 'linear-gradient(135deg,#4c1d95,#2e1065)'
+    },
+    {
+      name: 'Corporate', price: 'Custom', period: '', description: 'Tailored for enterprises & institutions',
+      features: ['Unlimited uploads', 'Unlimited RAG chunks', 'All Plus features', 'SSO / SAML', 'Dedicated support & SLA', 'On-premise option', 'Custom branding'],
+      cta: 'Contact Us', popular: false, planKey: 'corporate',
+      accent: '#f59e0b', gradient: 'linear-gradient(135deg,#78350f,#451a03)'
+    }
   ];
 
   const stats = [
@@ -204,32 +225,67 @@ export default function LandingPage() {
         </div>
       </section >
 
-      {/* Pricing */}
-      < section id="pricing" style={{ padding: '6rem 2rem', background: '#0a0a0a' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <section id="pricing" style={{ padding: '6rem 2rem', background: '#0a0a0a' }}>
+        <div style={{ maxWidth: '1260px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '2.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '1rem', background: 'linear-gradient(135deg, #fff, #d1d5db)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('pricingTitle')}</h2>
           <p style={{ textAlign: 'center', color: '#9ca3af', marginBottom: '3rem', fontSize: '1.1rem' }}>{t('pricingSubtitle')}</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
             {pricingPlans.map((plan, idx) => (
-              <div key={idx} onMouseEnter={() => setHoveredPricing(idx)} onMouseLeave={() => setHoveredPricing(null)} style={{ background: plan.popular ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15))' : 'rgba(255, 255, 255, 0.03)', border: plan.popular ? '2px solid #667eea' : '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', padding: '2.5rem', transition: 'all 0.3s ease', transform: hoveredPricing === idx ? 'translateY(-5px)' : 'none', position: 'relative' }}>
-                {plan.popular && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #667eea, #764ba2)', padding: '0.3rem 1.5rem', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700 }}>MOST POPULAR</div>}
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>{plan.name}</h3>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '3rem', fontWeight: 800, background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{plan.price}</span>
-                  <span style={{ color: '#9ca3af' }}>{plan.period}</span>
+              <div
+                key={idx}
+                onMouseEnter={() => setHoveredPricing(idx)}
+                onMouseLeave={() => setHoveredPricing(null)}
+                style={{
+                  background: plan.popular ? plan.gradient : 'rgba(255,255,255,0.03)',
+                  border: plan.popular ? `2px solid ${plan.accent}` : '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '20px', padding: '2.25rem 2rem',
+                  transition: 'all 0.3s ease',
+                  transform: hoveredPricing === idx ? 'translateY(-6px)' : 'none',
+                  boxShadow: hoveredPricing === idx ? `0 20px 50px ${plan.accent}40` : 'none',
+                  position: 'relative'
+                }}
+              >
+                {plan.popular && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(135deg, ${plan.accent}, #6d28d9)`, padding: '0.3rem 1.5rem', borderRadius: '50px', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}>MOST POPULAR</div>}
+                <div style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>
+                  {plan.planKey === 'free' ? '🆓' : plan.planKey === 'pro' ? '⚡' : plan.planKey === 'plus' ? '🚀' : '🏢'}
                 </div>
-                <p style={{ color: '#9ca3af', marginBottom: '1.5rem' }}>{plan.description}</p>
+                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '0.4rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{plan.name}</h3>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '0.4rem' }}>
+                  <span style={{ fontSize: '2.8rem', fontWeight: 900, background: `linear-gradient(135deg, #fff, ${plan.accent})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{plan.price}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '0.9rem' }}>{plan.period}</span>
+                </div>
+                <p style={{ color: 'rgba(255,255,255,0.55)', marginBottom: '1.25rem', fontSize: '0.88rem', lineHeight: 1.5 }}>{plan.description}</p>
                 {plan.features.map((feature, fIdx) => (
-                  <div key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <span style={{ color: '#667eea' }}>✔</span> <span style={{ color: '#d1d5db' }}>{feature}</span>
+                  <div key={fIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                    <span style={{ color: '#4ade80', fontWeight: 800, flexShrink: 0 }}>✓</span>
+                    <span style={{ color: '#d1d5db', fontSize: '0.875rem' }}>{feature}</span>
                   </div>
                 ))}
-                <button onClick={handleStartTrial} style={{ width: '100%', marginTop: '1.5rem', padding: '0.875rem', borderRadius: '12px', border: plan.popular ? 'none' : '1px solid rgba(255, 255, 255, 0.2)', background: plan.popular ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'transparent', color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' }}>{plan.cta}</button>
+                <button
+                  onClick={() => {
+                    if (plan.planKey === 'corporate') {
+                      window.location.href = 'mailto:sales@zenzee.com?subject=Corporate Plan Inquiry';
+                    } else {
+                      handleStartTrial();
+                    }
+                  }}
+                  style={{
+                    width: '100%', marginTop: '1.5rem', padding: '0.875rem',
+                    borderRadius: '12px',
+                    border: plan.popular ? 'none' : `1px solid ${plan.accent}60`,
+                    background: plan.popular ? plan.accent : plan.planKey === 'corporate' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.06)',
+                    color: '#fff', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: plan.popular ? `0 4px 20px ${plan.accent}60` : 'none'
+                  }}
+                >{plan.cta}</button>
               </div>
             ))}
           </div>
+          <p style={{ textAlign: 'center', color: '#475569', fontSize: '0.8rem', marginTop: '2rem' }}>🔒 Secure payments via Stripe · Cancel anytime · INR pricing also available</p>
         </div>
-      </section >
+      </section>
+
 
       {/* Demo Video Modal */}
       {

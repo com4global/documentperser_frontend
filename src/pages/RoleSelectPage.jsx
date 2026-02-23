@@ -14,13 +14,14 @@ const ROLES = [
     { id: 'student', icon: '🎒', label: 'Student', desc: 'Learn from assigned topics' },
     { id: 'teacher', icon: '👩‍🏫', label: 'Teacher', desc: 'Create classrooms & assign goals' },
     { id: 'individual', icon: '📖', label: 'Individual Learner', desc: 'Self-paced learning' },
+    { id: 'advocate', icon: '⚖️', label: 'Advocate / Attorney', desc: 'Legal analysis & document review' },
     { id: 'other', icon: '🌐', label: 'Other', desc: 'Explore freely' },
 ];
 
 function destFor(role) {
     if (role === 'teacher') return '/teacher';
     if (role === 'student') return '/student';
-    return '/chat';
+    return '/chat'; // advocate, individual, other → chat
 }
 
 export default function RoleSelectPage() {

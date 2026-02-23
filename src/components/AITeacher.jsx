@@ -57,6 +57,13 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     const [loadingStep, setLoadingStep] = useState(0);
     // 0=idle, 1=searching content, 2=writing script, 3=generating audio
 
+    // ── D-ID realistic avatar video state ──
+    const [didVideoUrl, setDidVideoUrl] = useState('');
+    const [didVideoPresenter, setDidVideoPresenter] = useState('');
+    const [didScript, setDidScript] = useState('');
+    const [didLoadingStep, setDidLoadingStep] = useState(0);
+    // 0=idle, 1=reading content, 2=writing script, 3=rendering video
+
     // ── Interactive Voice Q&A ("Raise Hand") state ──
     const [isAskingDoubt, setIsAskingDoubt] = useState(false);   // mic is listening
     const [doubtTranscript, setDoubtTranscript] = useState('');  // what user said
@@ -383,6 +390,17 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
             const result = topicsResult.status === 'fulfilled' ? topicsResult.value : null;
             if (result && result.success && result.topics && result.topics.length > 0) {
                 setTopics(result.topics);
+            } else if (result && result.success && (!result.topics || result.topics.length === 0)) {
+                // Sparse chapter — synthesize a single topic from chapter name so user can still learn
+                const syntheticTopic = {
+                    title: chapter.name === 'Untitled Section' ? selectedDoc.replace(/\.[^.]+$/, '') : chapter.name,
+                    description: `Content from this section of ${selectedDoc}. Only a small amount of text was found, but you can still get a lesson on it.`,
+                    key_concepts: [],
+                    difficulty: 'beginner',
+                    source_document: selectedDoc,
+                    _synthetic: true  // marker so we can show a hint
+                };
+                setTopics([syntheticTopic]);
             } else {
                 setError(result?.message || 'No topics could be extracted from this chapter.');
             }
@@ -497,6 +515,42 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
             console.error('TTS video generation failed:', err);
             setVideoStatus('failed');
             setVideoError(err.message || 'TTS video generation failed');
+        }
+    };
+
+    // ── D-ID Professional Avatar Video ──
+    const startDIDVideoGeneration = async () => {
+        setView('did-loading');
+        setDidVideoUrl('');
+        setDidScript('');
+        setDidLoadingStep(1);
+
+        // Animated step progression UI
+        const t2 = setTimeout(() => setDidLoadingStep(2), 4000);
+        const t3 = setTimeout(() => setDidLoadingStep(3), 9000);
+
+        try {
+            const result = await apiService.generateDIDVideo(selectedTopic, language, selectedDoc);
+            clearTimeout(t2); clearTimeout(t3);
+            setDidLoadingStep(0);
+
+            if (result.success && result.video_url) {
+                setDidVideoUrl(result.video_url);
+                setDidVideoPresenter(result.presenter || 'AI Presenter');
+                setDidScript(result.script || '');
+                setView('did-video');
+                if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+            } else {
+                setDidLoadingStep(0);
+                setVideoError(result.detail || 'D-ID video generation failed');
+                setView('did-loading'); // stay on loading view with error
+                setVideoStatus('failed');
+            }
+        } catch (err) {
+            clearTimeout(t2); clearTimeout(t3);
+            setDidLoadingStep(0);
+            setVideoError(err.message || 'D-ID video generation failed');
+            setVideoStatus('failed');
         }
     };
 
@@ -1160,7 +1214,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                     <div className="ai-teacher-doc-arrow">→</div>
                                 </div>
 
-                                {/* Option 2: Interactive Video */}
+                                {/* Option 2: Interactive Video (TTS) */}
                                 <div
                                     className="ai-teacher-mode-card ai-teacher-mode-video"
                                     onClick={startVideoGeneration}
@@ -1176,11 +1230,13 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                         <div className="ai-teacher-mode-desc">
                                             {cachedVideoUrl
                                                 ? (t('videoReadyDesc') || 'AI-generated teaching video is ready to play!')
-                                                : (t('videoDesc') || 'AI avatar explains the topic in a professional teaching video (2-5 min to generate)')}
+                                                : (t('videoDesc') || 'AI avatar explains the topic with animated subtitles')}
                                         </div>
                                     </div>
                                     <div className="ai-teacher-doc-arrow">→</div>
                                 </div>
+
+
                             </div>
                         </div>
                     )}
@@ -1235,8 +1291,8 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                                         : active ? 'rgba(139,92,246,0.2)'
                                                             : 'rgba(255,255,255,0.05)',
                                                     border: `1px solid ${done ? 'rgba(34,197,94,0.4)'
-                                                            : active ? 'rgba(139,92,246,0.5)'
-                                                                : 'rgba(255,255,255,0.08)'}`,
+                                                        : active ? 'rgba(139,92,246,0.5)'
+                                                            : 'rgba(255,255,255,0.08)'}`,
                                                     transition: 'all 0.4s ease',
                                                     opacity: pending ? 0.45 : 1,
                                                 }}>
@@ -1444,6 +1500,156 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                         )) : (
                                             <div className="tts-script-text">{ttsScript}</div>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ===== D-ID PROFESSIONAL PRESENTER LOADING VIEW ===== */}
+                    {view === 'did-loading' && (
+                        <div className="ai-teacher-loading">
+                            <button className="ai-teacher-back-btn" onClick={() => {
+                                setDidLoadingStep(0);
+                                setView('mode-select');
+                            }}>
+                                ← Back
+                            </button>
+                            {videoStatus === 'failed' ? (
+                                <>
+                                    <div className="ai-teacher-empty-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+                                    <h3 style={{ color: '#f87171' }}>Video Generation Failed</h3>
+                                    <p style={{ color: '#94a3b8', marginBottom: '16px' }}>{videoError}</p>
+                                    <button className="ai-teacher-qa-btn" onClick={startDIDVideoGeneration}>🔄 Try Again</button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="ai-teacher-loading-spinner" />
+                                    <h3 style={{ marginBottom: '24px' }}>🎥 Creating Your Professional Presenter Video...</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '340px' }}>
+                                        {[
+                                            { step: 1, icon: '📚', label: 'Reading your document content' },
+                                            { step: 2, icon: '✍️', label: 'Writing professional narration script' },
+                                            { step: 3, icon: '🎥', label: 'Rendering AI presenter video' },
+                                        ].map(({ step, icon, label }) => {
+                                            const done = didLoadingStep > step;
+                                            const active = didLoadingStep === step;
+                                            const pending = didLoadingStep < step;
+                                            return (
+                                                <div key={step} style={{
+                                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                                    padding: '10px 16px', borderRadius: '12px',
+                                                    background: done ? 'rgba(16,185,129,0.15)'
+                                                        : active ? 'rgba(6,182,212,0.2)'
+                                                            : 'rgba(255,255,255,0.05)',
+                                                    border: `1px solid ${done ? 'rgba(16,185,129,0.4)'
+                                                        : active ? 'rgba(6,182,212,0.5)'
+                                                            : 'rgba(255,255,255,0.08)'}`,
+                                                    transition: 'all 0.4s ease', opacity: pending ? 0.45 : 1,
+                                                }}>
+                                                    <span style={{ fontSize: '20px', minWidth: '24px', textAlign: 'center' }}>
+                                                        {done ? '✅' : active ? '⌛' : icon}
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: '0.9rem', fontWeight: active ? 600 : 400,
+                                                        color: done ? '#4ade80' : active ? '#67e8f9' : '#94a3b8'
+                                                    }}>{label}</span>
+                                                    {active && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#06b6d4' }}>In progress...</span>}
+                                                    {done && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#4ade80' }}>Done ✓</span>}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <p style={{ marginTop: '20px', fontSize: '0.8rem', color: '#64748b' }}>
+                                        {didLoadingStep === 3 ? 'D-ID rendering your presenter video — usually 30-90 seconds…' :
+                                            didLoadingStep === 2 ? 'GPT writing a professional narration script…' :
+                                                'Searching your document for the best content…'}
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ===== D-ID PROFESSIONAL PRESENTER VIDEO PLAYER ===== */}
+                    {view === 'did-video' && didVideoUrl && (
+                        <div className="ai-teacher-lesson">
+                            <button className="ai-teacher-back-btn" onClick={() => setView('mode-select')}>
+                                ← Back to Learning Modes
+                            </button>
+
+                            {/* Header */}
+                            <div style={{ marginBottom: '8px' }}>
+                                <div className="ai-teacher-lesson-title" style={{ color: '#34d399' }}>
+                                    🎥 {selectedTopic}
+                                </div>
+                                <div style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                    background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,182,212,0.1))',
+                                    border: '1px solid rgba(16,185,129,0.3)',
+                                    padding: '4px 12px', borderRadius: '20px',
+                                    fontSize: '0.8rem', color: '#34d399', fontWeight: 600
+                                }}>
+                                    <span>🤖</span>
+                                    Presented by {didVideoPresenter} · Professional AI Presenter
+                                </div>
+                            </div>
+
+                            {/* Video Player */}
+                            <div style={{
+                                borderRadius: '16px', overflow: 'hidden',
+                                boxShadow: '0 8px 32px rgba(16,185,129,0.2)',
+                                border: '1px solid rgba(16,185,129,0.25)',
+                                background: '#000', marginBottom: '16px'
+                            }}>
+                                <video
+                                    style={{ width: '100%', maxHeight: '420px', display: 'block' }}
+                                    src={didVideoUrl}
+                                    controls
+                                    autoPlay
+                                    playsInline
+                                    onEnded={() => {
+                                        if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+                                    }}
+                                >
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="ai-teacher-video-actions">
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    onClick={() => setDidScript(prev => prev ? '' : didScript)}
+                                    style={{ background: 'rgba(6,182,212,0.15)', color: '#67e8f9', borderColor: 'rgba(6,182,212,0.3)' }}
+                                    title="Toggle script"
+                                >
+                                    📄 {didScript ? 'Hide Script' : 'View Script'}
+                                </button>
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    onClick={() => generateLesson(selectedTopic)}
+                                >
+                                    🎙️ View as Dialogue
+                                </button>
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', borderColor: 'rgba(52,211,153,0.3)', fontWeight: 600 }}
+                                    onClick={() => {
+                                        if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+                                        stopAllAudio();
+                                        onClose();
+                                    }}
+                                >
+                                    ✅ Complete & Close
+                                </button>
+                            </div>
+
+                            {/* Script panel */}
+                            {didScript && (
+                                <div className="tts-script-panel" style={{ marginTop: '16px' }}>
+                                    <div className="tts-script-panel-header">📝 Narration Script</div>
+                                    <div className="tts-script-panel-body" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                                        {didScript}
                                     </div>
                                 </div>
                             )}

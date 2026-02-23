@@ -443,6 +443,27 @@ export const apiService = {
     return handleResponse(response);
   },
 
+  // D-ID realistic avatar video for Individual Learner role
+  generateDIDVideo: async (topic, language = 'en', docName = '') => {
+    const formData = new FormData();
+    formData.append('topic', topic);
+    formData.append('language', language);
+    formData.append('doc_name', docName);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    // D-ID can take up to 3 minutes to render — use AbortController with generous timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 200000); // 200s timeout
+    try {
+      const response = await fetch(`${API_URL}/api/edtech/generate-did-video`, {
+        method: 'POST', body: formData, headers, signal: controller.signal
+      });
+      return handleResponse(response);
+    } finally {
+      clearTimeout(timeout);
+    }
+  },
+
   askEdtechQuestion: async (question, topic = '', language = 'en') => {
     const formData = new FormData();
     formData.append('question', question);
