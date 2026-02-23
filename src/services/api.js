@@ -437,19 +437,20 @@ export const apiService = {
     formData.append('doc_name', docName);
     const token = await getAuthToken();
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    const response = await fetch(`${API_URL}/api/edtech/generate-lesson`, {
-      method: 'POST', body: formData, headers
-    });
-    return handleResponse(response);
+    // Lesson generation with audio can take up to 60s on Vercel
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90000);
+    try {
+      const response = await fetch(`${API_URL}/api/edtech/generate-lesson`, {
+        method: 'POST', body: formData, headers, signal: controller.signal
+      });
+      return handleResponse(response);
+    } finally {
+      clearTimeout(timeout);
+    }
   },
 
-  checkLessonAudioStatus: async (topic, docName = '', language = 'en') => {
-    const token = await getAuthToken();
-    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    const params = new URLSearchParams({ topic, doc_name: docName, language });
-    const response = await fetch(`${API_URL}/api/edtech/lesson-audio-status?${params.toString()}`, { headers });
-    return handleResponse(response);
-  },
+
 
   // D-ID realistic avatar video for Individual Learner role
   generateDIDVideo: async (topic, language = 'en', docName = '') => {
@@ -551,10 +552,17 @@ export const apiService = {
     formData.append('voice', voice);
     const token = await getAuthToken();
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    const response = await fetch(`${API_URL}/api/edtech/generate-tts-video`, {
-      method: 'POST', body: formData, headers
-    });
-    return handleResponse(response);
+    // TTS video generation can take up to 60s on Vercel
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90000);
+    try {
+      const response = await fetch(`${API_URL}/api/edtech/generate-tts-video`, {
+        method: 'POST', body: formData, headers, signal: controller.signal
+      });
+      return handleResponse(response);
+    } finally {
+      clearTimeout(timeout);
+    }
   },
 
   // ---- Classroom / LMS ----

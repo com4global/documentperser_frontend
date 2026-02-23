@@ -499,8 +499,10 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
             if (result.success && result.status === 'completed') {
                 setTtsSentences(result.sentences || []);
                 setTtsScript(result.script || '');
-                const audioUrl = result.audio_url.startsWith('http') ? result.audio_url : `${APP_CONFIG.API_URL}${result.audio_url}`;
-                setTtsAudioUrl(audioUrl);
+                if (result.audio_url) {
+                    const audioUrl = result.audio_url.startsWith('http') ? result.audio_url : `${APP_CONFIG.API_URL}${result.audio_url}`;
+                    setTtsAudioUrl(audioUrl);
+                }
                 setVideoStatus('completed');
                 setView('tts-video');
             } else {
@@ -876,6 +878,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
 
     // ── Dialogue audio playback ──
     const playDialogueAudio = (audioUrl) => {
+        if (!audioUrl) return;
         if (dialogueAudioRef.current) {
             dialogueAudioRef.current.pause();
         }
