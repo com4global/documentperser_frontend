@@ -143,7 +143,6 @@ export default function AdminDashboard() {
 
   // Polling for updates + Network status monitoring
   useEffect(() => {
-    let cancelled = false;
     const interval = setInterval(() => {
       if (!uploading && !processing) {
         fetchDashboardData();

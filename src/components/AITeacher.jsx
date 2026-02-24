@@ -1539,7 +1539,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                                             >
                                                                 <img
                                                                     src={tp.image_url}
-                                                                    alt="Talking Photo"
+                                                                    alt="Avatar preview"
                                                                     style={{
                                                                         width: '72px', height: '72px',
                                                                         objectFit: 'cover', display: 'block',
