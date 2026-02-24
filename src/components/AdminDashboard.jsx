@@ -156,7 +156,6 @@ export default function AdminDashboard() {
     window.addEventListener('offline', handleOffline);
     
     return () => {
-      cancelled = true;
       clearInterval(interval);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
