@@ -64,6 +64,19 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     const [didLoadingStep, setDidLoadingStep] = useState(0);
     // 0=idle, 1=reading content, 2=writing script, 3=rendering video
 
+    // ── HeyGen professional avatar video state ──
+    const [heygenVideoUrl, setHeygenVideoUrl] = useState('');
+    const [heygenScript, setHeygenScript] = useState('');
+    const [heygenLoadingStep, setHeygenLoadingStep] = useState(0);
+    const [heygenLanguage, setHeygenLanguage] = useState('en');
+    const [heygenAvatarType, setHeygenAvatarType] = useState('public');   // 'public' | 'talking_photo'
+    const [heygenAvatarId, setHeygenAvatarId] = useState('');             // specific avatar/photo ID
+    const [availableAvatars, setAvailableAvatars] = useState(null);       // { public_avatars, talking_photos }
+    const [avatarsLoading, setAvatarsLoading] = useState(false);
+    const [showHeygenOptions, setShowHeygenOptions] = useState(false);    // expand/collapse
+
+
+
     // ── Interactive Voice Q&A ("Raise Hand") state ──
     const [isAskingDoubt, setIsAskingDoubt] = useState(false);   // mic is listening
     const [doubtTranscript, setDoubtTranscript] = useState('');  // what user said
@@ -85,6 +98,20 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     const onActivityCompleteRef = useRef(onActivityComplete);
     useEffect(() => { onActivityCompleteRef.current = onActivityComplete; }, [onActivityComplete]);
     const [endSessionQuestion, setEndSessionQuestion] = useState('');
+
+    // ── Client-side cache helpers (stale-while-revalidate) ──────────────
+    const readCache = (key) => {
+        try {
+            const raw = sessionStorage.getItem(key);
+            if (!raw) return null;
+            const { data, ts } = JSON.parse(raw);
+            return { data, stale: Date.now() - ts > 120_000 }; // 2 min TTL
+        } catch { return null; }
+    };
+    const writeCache = (key, data) => {
+        try { sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); }
+        catch { /* full */ }
+    };
     const [endSessionTyped, setEndSessionTyped] = useState('');
     const endSessionAudioRef = useRef(null); // for prompt and thank-you TTS
     const endSessionTimeoutRef = useRef(null);
@@ -332,11 +359,20 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     }, []);
 
     const loadDocuments = async () => {
-        setLoadingDocs(true);
+        // Instantly hydrate from cache
+        const cached = readCache('aiteacher_docs');
+        if (cached?.data) {
+            setDocuments(cached.data);
+            setLoadingDocs(false); // show cached docs immediately
+        } else {
+            setLoadingDocs(true);
+        }
+        // Always revalidate from network
         try {
             const result = await apiService.getEdtechDocuments();
             if (result.success && result.documents) {
                 setDocuments(result.documents);
+                writeCache('aiteacher_docs', result.documents);
             }
         } catch (err) {
             console.error('Failed to load documents:', err);
@@ -347,22 +383,34 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     const selectDocument = async (docName) => {
         setSelectedDoc(docName);
         setView('chapters');
-        setLoadingChapters(true);
-        setChapters([]);
         setSelectedChapter(null);
         setTopics([]);
         setError('');
+
+        // Instantly hydrate chapters from cache
+        const cacheKey = `aiteacher_chapters_${docName}`;
+        const cached = readCache(cacheKey);
+        if (cached?.data?.length) {
+            setChapters(cached.data);
+            setLoadingChapters(false);
+        } else {
+            setLoadingChapters(true);
+            setChapters([]);
+        }
 
         try {
             const result = await apiService.getEdtechChapters(docName);
             if (result.success && result.chapters && result.chapters.length > 0) {
                 setChapters(result.chapters);
-            } else {
+                writeCache(cacheKey, result.chapters);
+            } else if (!cached?.data?.length) {
                 setError(result.message || 'No chapters found in this document.');
             }
         } catch (err) {
             console.error('Failed to load chapters:', err);
-            setError(`Error loading chapters: ${err.message || 'Unknown error'}`);
+            if (!cached?.data?.length) {
+                setError(`Error loading chapters: ${err.message || 'Unknown error'}`);
+            }
         }
         setLoadingChapters(false);
     };
@@ -548,6 +596,67 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
             clearTimeout(t2); clearTimeout(t3);
             setDidLoadingStep(0);
             setVideoError(err.message || 'D-ID video generation failed');
+            setVideoStatus('failed');
+        }
+    };
+
+    // ── HeyGen Professional Avatar Video ──
+    const loadHeyGenAvatars = async () => {
+        if (availableAvatars || avatarsLoading) return;
+        setAvatarsLoading(true);
+        try {
+            const result = await apiService.getHeyGenAvatars();
+            if (result.success) {
+                setAvailableAvatars({
+                    public_avatars: result.public_avatars || [],
+                    talking_photos: result.talking_photos || [],
+                });
+            }
+        } catch (err) {
+            console.warn('Failed to load avatars:', err);
+        } finally {
+            setAvatarsLoading(false);
+        }
+    };
+
+
+
+
+    const startHeyGenVideoGeneration = async () => {
+        setView('heygen-loading');
+        setHeygenVideoUrl('');
+        setHeygenScript('');
+        setHeygenLoadingStep(1);
+        setVideoStatus('generating');
+        setVideoError('');
+
+        // Animated step progression UI
+        const t2 = setTimeout(() => setHeygenLoadingStep(2), 5000);
+        const t3 = setTimeout(() => setHeygenLoadingStep(3), 12000);
+        const t4 = setTimeout(() => setHeygenLoadingStep(4), 25000);
+
+        try {
+            const result = await apiService.generateHeyGenVideo(
+                selectedTopic, heygenLanguage, selectedDoc, heygenAvatarType, heygenAvatarId
+            );
+            clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+            setHeygenLoadingStep(0);
+
+            if (result.success && result.video_url) {
+                setHeygenVideoUrl(result.video_url);
+                setHeygenScript(result.script || '');
+                setView('heygen-video');
+                setVideoStatus('completed');
+                if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+            } else {
+                setHeygenLoadingStep(0);
+                setVideoError(result.detail || 'HeyGen video generation failed');
+                setVideoStatus('failed');
+            }
+        } catch (err) {
+            clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+            setHeygenLoadingStep(0);
+            setVideoError(err.message || 'HeyGen video generation failed');
             setVideoStatus('failed');
         }
     };
@@ -930,7 +1039,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     };
 
     return (
-        <div className="ai-teacher-overlay" onClick={() => { stopAllAudio(); onClose(); }}>
+        <div className="ai-teacher-overlay" onClick={(e) => e.stopPropagation()}>
             <div className={`ai-teacher-modal ${isFullscreen ? 'ai-teacher-fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
@@ -1233,6 +1342,308 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                         </div>
                                     </div>
                                     <div className="ai-teacher-doc-arrow">→</div>
+                                </div>
+
+                                {/* Option 3: Professional HeyGen Video — Expanded */}
+                                <div
+                                    style={{
+                                        border: '1px solid rgba(245,158,11,0.4)',
+                                        background: showHeygenOptions
+                                            ? 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(234,179,8,0.06))'
+                                            : 'rgba(245,158,11,0.08)',
+                                        borderRadius: '16px',
+                                        overflow: 'hidden',
+                                        transition: 'all 0.3s ease',
+                                    }}
+                                >
+                                    {/* Header card (click to expand) */}
+                                    <div
+                                        className="ai-teacher-mode-card"
+                                        style={{ border: 'none', borderRadius: showHeygenOptions ? '16px 16px 0 0' : '16px', margin: 0 }}
+                                        onClick={() => {
+                                            setShowHeygenOptions(!showHeygenOptions);
+                                            if (!availableAvatars) loadHeyGenAvatars();
+                                        }}
+                                    >
+                                        <div className="ai-teacher-mode-icon">⭐</div>
+                                        <div className="ai-teacher-mode-info">
+                                            <div className="ai-teacher-mode-title">
+                                                Professional AI Video
+                                                <span style={{
+                                                    fontSize: '10px', padding: '2px 8px', borderRadius: '8px',
+                                                    background: 'rgba(245,158,11,0.2)', color: '#f59e0b',
+                                                    marginLeft: '8px', fontWeight: 700, letterSpacing: '0.5px'
+                                                }}>HEYGEN</span>
+                                            </div>
+                                            <div className="ai-teacher-mode-desc">
+                                                {showHeygenOptions ? 'Choose your avatar type below' : 'Realistic AI avatar with lip-sync & subtitles'}
+                                            </div>
+                                        </div>
+                                        <div className="ai-teacher-doc-arrow" style={{
+                                            transform: showHeygenOptions ? 'rotate(90deg)' : 'none',
+                                            transition: 'transform 0.3s ease'
+                                        }}>→</div>
+                                    </div>
+
+                                    {/* Expanded Options Panel */}
+                                    {showHeygenOptions && (
+                                        <div style={{ padding: '0 16px 16px' }} onClick={(e) => e.stopPropagation()}>
+
+                                            {/* Language selector */}
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                marginBottom: '12px', paddingBottom: '12px',
+                                                borderBottom: '1px solid rgba(245,158,11,0.15)'
+                                            }}>
+                                                <span style={{ fontSize: '12px', color: '#94a3b8' }}>🌐 Language:</span>
+                                                <select
+                                                    value={heygenLanguage}
+                                                    onChange={(e) => setHeygenLanguage(e.target.value)}
+                                                    style={{
+                                                        padding: '4px 8px', borderRadius: '8px', fontSize: '12px',
+                                                        background: 'rgba(30,30,60,0.9)', color: '#e2e8f0',
+                                                        border: '1px solid rgba(245,158,11,0.3)', cursor: 'pointer',
+                                                        outline: 'none',
+                                                    }}
+                                                >
+                                                    <option value="en">English</option>
+                                                    <option value="ta">Tamil (Thanglish)</option>
+                                                </select>
+                                            </div>
+
+                                            {/* Avatar Type Cards */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+                                                {/* 1. Public Studio Avatar */}
+                                                <div
+                                                    onClick={() => { setHeygenAvatarType('public'); setHeygenAvatarId(''); }}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '12px',
+                                                        padding: '12px', borderRadius: '12px', cursor: 'pointer',
+                                                        border: heygenAvatarType === 'public'
+                                                            ? '2px solid #f59e0b'
+                                                            : '1px solid rgba(148,163,184,0.2)',
+                                                        background: heygenAvatarType === 'public'
+                                                            ? 'rgba(245,158,11,0.1)'
+                                                            : 'rgba(30,30,60,0.4)',
+                                                        transition: 'all 0.2s ease',
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '24px' }}>🎭</span>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '14px' }}>
+                                                            Studio Avatar
+                                                        </div>
+                                                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                                                            Professional animated avatar with full body movement
+                                                        </div>
+                                                    </div>
+                                                    {heygenAvatarType === 'public' && (
+                                                        <span style={{ color: '#f59e0b', fontSize: '18px' }}>✓</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Public Avatar Selector (when selected) */}
+                                                {heygenAvatarType === 'public' && availableAvatars?.public_avatars?.length > 0 && (
+                                                    <div style={{
+                                                        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+                                                        gap: '8px', padding: '8px 4px',
+                                                    }}>
+                                                        {availableAvatars.public_avatars.map((av) => (
+                                                            <div
+                                                                key={av.id}
+                                                                onClick={() => setHeygenAvatarId(av.id)}
+                                                                style={{
+                                                                    textAlign: 'center', cursor: 'pointer',
+                                                                    padding: '6px', borderRadius: '10px',
+                                                                    border: heygenAvatarId === av.id
+                                                                        ? '2px solid #f59e0b'
+                                                                        : '1px solid rgba(148,163,184,0.15)',
+                                                                    background: heygenAvatarId === av.id
+                                                                        ? 'rgba(245,158,11,0.1)'
+                                                                        : 'rgba(30,30,60,0.3)',
+                                                                    transition: 'all 0.2s ease',
+                                                                }}
+                                                            >
+                                                                <img
+                                                                    src={av.preview_url}
+                                                                    alt={av.name}
+                                                                    style={{
+                                                                        width: '48px', height: '48px',
+                                                                        borderRadius: '50%', objectFit: 'cover',
+                                                                        border: '2px solid rgba(245,158,11,0.2)',
+                                                                    }}
+                                                                />
+                                                                <div style={{
+                                                                    fontSize: '10px', color: '#94a3b8',
+                                                                    marginTop: '4px', overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                                                }}>
+                                                                    {av.name}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* 2. Talking Photo */}
+                                                <div
+                                                    onClick={() => { setHeygenAvatarType('talking_photo'); setHeygenAvatarId(''); }}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '12px',
+                                                        padding: '12px', borderRadius: '12px', cursor: 'pointer',
+                                                        border: heygenAvatarType === 'talking_photo'
+                                                            ? '2px solid #8b5cf6'
+                                                            : '1px solid rgba(148,163,184,0.2)',
+                                                        background: heygenAvatarType === 'talking_photo'
+                                                            ? 'rgba(139,92,246,0.1)'
+                                                            : 'rgba(30,30,60,0.4)',
+                                                        transition: 'all 0.2s ease',
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '24px' }}>📸</span>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '14px' }}>
+                                                            Talking Photo
+                                                        </div>
+                                                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                                                            Your uploaded photo speaks with realistic lip-sync
+                                                        </div>
+                                                    </div>
+                                                    {heygenAvatarType === 'talking_photo' && (
+                                                        <span style={{ color: '#8b5cf6', fontSize: '18px' }}>✓</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Talking Photo Selector (when selected) */}
+                                                {heygenAvatarType === 'talking_photo' && availableAvatars?.talking_photos?.length > 0 && (
+                                                    <div style={{
+                                                        display: 'flex', gap: '10px', padding: '8px 4px',
+                                                        flexWrap: 'wrap',
+                                                    }}>
+                                                        {availableAvatars.talking_photos.map((tp) => (
+                                                            <div
+                                                                key={tp.id}
+                                                                onClick={() => setHeygenAvatarId(tp.id)}
+                                                                style={{
+                                                                    cursor: 'pointer', borderRadius: '12px',
+                                                                    border: heygenAvatarId === tp.id
+                                                                        ? '2px solid #8b5cf6'
+                                                                        : '1px solid rgba(148,163,184,0.15)',
+                                                                    overflow: 'hidden',
+                                                                    transition: 'all 0.2s ease',
+                                                                    boxShadow: heygenAvatarId === tp.id
+                                                                        ? '0 0 12px rgba(139,92,246,0.3)'
+                                                                        : 'none',
+                                                                }}
+                                                            >
+                                                                <img
+                                                                    src={tp.image_url}
+                                                                    alt="Talking Photo"
+                                                                    style={{
+                                                                        width: '72px', height: '72px',
+                                                                        objectFit: 'cover', display: 'block',
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Upload on HeyGen + Refresh */}
+                                                {heygenAvatarType === 'talking_photo' && (
+                                                    <div style={{ display: 'flex', gap: '8px', padding: '4px 4px 8px' }}>
+                                                        <a
+                                                            href="https://app.heygen.com/avatars"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', gap: '6px',
+                                                                flex: 1, padding: '10px 14px',
+                                                                borderRadius: '10px', cursor: 'pointer',
+                                                                border: '1px dashed rgba(139,92,246,0.4)',
+                                                                background: 'rgba(139,92,246,0.06)',
+                                                                color: '#a78bfa', fontSize: '13px',
+                                                                fontWeight: 600, textDecoration: 'none',
+                                                                transition: 'all 0.2s ease',
+                                                            }}
+                                                        >
+                                                            <span style={{ fontSize: '16px' }}>➕</span>
+                                                            Upload on HeyGen
+                                                        </a>
+                                                        <button
+                                                            onClick={() => { setAvailableAvatars(null); loadHeyGenAvatars(); }}
+                                                            disabled={avatarsLoading}
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', gap: '6px',
+                                                                padding: '10px 14px',
+                                                                borderRadius: '10px', cursor: avatarsLoading ? 'wait' : 'pointer',
+                                                                border: '1px solid rgba(139,92,246,0.3)',
+                                                                background: 'rgba(139,92,246,0.06)',
+                                                                color: '#a78bfa', fontSize: '13px',
+                                                                fontWeight: 600, transition: 'all 0.2s ease',
+                                                            }}
+                                                        >
+                                                            <span style={{ fontSize: '16px' }}>{avatarsLoading ? '⏳' : '🔄'}</span>
+                                                            {avatarsLoading ? 'Loading...' : 'Refresh'}
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* 3. Digital Twin (Coming Soon) */}
+                                                <div
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '12px',
+                                                        padding: '12px', borderRadius: '12px',
+                                                        border: '1px solid rgba(148,163,184,0.1)',
+                                                        background: 'rgba(30,30,60,0.25)',
+                                                        opacity: 0.5, cursor: 'not-allowed',
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '24px' }}>🤖</span>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '14px' }}>
+                                                            Digital Twin
+                                                            <span style={{
+                                                                fontSize: '9px', padding: '2px 6px', borderRadius: '6px',
+                                                                background: 'rgba(100,116,139,0.3)', color: '#94a3b8',
+                                                                marginLeft: '8px', fontWeight: 600, letterSpacing: '0.5px'
+                                                            }}>COMING SOON</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                                            Create a fully animated clone of yourself
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Generate Button */}
+                                            <button
+                                                onClick={startHeyGenVideoGeneration}
+                                                disabled={!selectedTopic}
+                                                style={{
+                                                    width: '100%', marginTop: '12px',
+                                                    padding: '12px 20px', borderRadius: '12px',
+                                                    border: 'none', cursor: selectedTopic ? 'pointer' : 'not-allowed',
+                                                    background: selectedTopic
+                                                        ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+                                                        : 'rgba(100,116,139,0.3)',
+                                                    color: '#fff', fontWeight: 700, fontSize: '14px',
+                                                    letterSpacing: '0.5px',
+                                                    boxShadow: selectedTopic ? '0 4px 16px rgba(245,158,11,0.3)' : 'none',
+                                                    transition: 'all 0.3s ease',
+                                                }}
+                                            >
+                                                🎬 Generate {heygenAvatarType === 'talking_photo' ? 'Talking Photo' : 'Studio Avatar'} Video
+                                            </button>
+
+                                            {avatarsLoading && (
+                                                <div style={{ textAlign: 'center', fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>
+                                                    Loading avatar options...
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
 
@@ -1649,6 +2060,160 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                     <div className="tts-script-panel-header">📝 Narration Script</div>
                                     <div className="tts-script-panel-body" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
                                         {didScript}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ===== HEYGEN LOADING VIEW ===== */}
+                    {view === 'heygen-loading' && (
+                        <div className="ai-teacher-loading">
+                            <button className="ai-teacher-back-btn" onClick={() => {
+                                setHeygenLoadingStep(0);
+                                setView('mode-select');
+                            }}>
+                                ← Back
+                            </button>
+                            {videoStatus === 'failed' ? (
+                                <>
+                                    <div className="ai-teacher-empty-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+                                    <h3 style={{ color: '#f87171' }}>HeyGen Video Failed</h3>
+                                    <p style={{ color: '#94a3b8', marginBottom: '16px' }}>{videoError}</p>
+                                    <button className="ai-teacher-qa-btn" onClick={startHeyGenVideoGeneration}>
+                                        🔄 Try Again
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="ai-teacher-loading-spinner"></div>
+                                    <h3 style={{ marginBottom: '24px' }}>⭐ Generating Professional AI Video...</h3>
+                                    <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>
+                                        HeyGen is creating a realistic AI avatar video. This may take 1-3 minutes.
+                                    </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '340px' }}>
+                                        {[
+                                            { step: 1, icon: '🔍', label: 'Finding relevant content' },
+                                            { step: 2, icon: '✍️', label: 'Writing teaching script' },
+                                            { step: 3, icon: '🎭', label: 'Rendering AI avatar' },
+                                            { step: 4, icon: '🎬', label: 'Adding subtitles & finalizing' },
+                                        ].map(({ step, icon, label }) => {
+                                            const done = heygenLoadingStep > step;
+                                            const active = heygenLoadingStep === step;
+                                            const pending = heygenLoadingStep < step;
+                                            return (
+                                                <div key={step} style={{
+                                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                                    padding: '10px 16px', borderRadius: '12px',
+                                                    background: done ? 'rgba(34,197,94,0.15)'
+                                                        : active ? 'rgba(245,158,11,0.2)'
+                                                            : 'rgba(255,255,255,0.05)',
+                                                    border: `1px solid ${done ? 'rgba(34,197,94,0.4)'
+                                                        : active ? 'rgba(245,158,11,0.5)'
+                                                            : 'rgba(255,255,255,0.08)'}`,
+                                                    transition: 'all 0.4s ease',
+                                                    opacity: pending ? 0.45 : 1,
+                                                }}>
+                                                    <span style={{ fontSize: '20px', minWidth: '24px', textAlign: 'center' }}>
+                                                        {done ? '✅' : active ? <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⌛</span> : icon}
+                                                    </span>
+                                                    <span style={{ color: done ? '#4ade80' : active ? '#fbbf24' : '#64748b', fontSize: '14px', fontWeight: active ? 600 : 400 }}>
+                                                        {label}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#f59e0b' }}>
+                                        <span>🌐</span>
+                                        <span>Language: {heygenLanguage === 'ta' ? 'Tamil (Thanglish)' : 'English'}</span>
+                                        <span style={{ color: '#64748b' }}>•</span>
+                                        <span>📝 English subtitles</span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ===== HEYGEN PROFESSIONAL VIDEO PLAYER ===== */}
+                    {view === 'heygen-video' && heygenVideoUrl && (
+                        <div className="ai-teacher-lesson">
+                            <button className="ai-teacher-back-btn" onClick={() => setView('mode-select')}>
+                                ← Back to Learning Modes
+                            </button>
+
+                            {/* Header */}
+                            <div style={{ marginBottom: '8px' }}>
+                                <div className="ai-teacher-lesson-title" style={{ color: '#f59e0b' }}>
+                                    ⭐ {selectedTopic}
+                                </div>
+                                <div style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                    background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(234,179,8,0.1))',
+                                    border: '1px solid rgba(245,158,11,0.3)',
+                                    padding: '4px 12px', borderRadius: '20px',
+                                    fontSize: '0.8rem', color: '#fbbf24', fontWeight: 600
+                                }}>
+                                    <span>🎭</span>
+                                    HeyGen Professional AI Presenter · {heygenLanguage === 'ta' ? 'Tamil (Thanglish)' : 'English'}
+                                </div>
+                            </div>
+
+                            {/* Video Player */}
+                            <div style={{
+                                borderRadius: '16px', overflow: 'hidden',
+                                boxShadow: '0 8px 32px rgba(245,158,11,0.2)',
+                                border: '1px solid rgba(245,158,11,0.25)',
+                                background: '#000', marginBottom: '16px'
+                            }}>
+                                <video
+                                    style={{ width: '100%', maxHeight: '480px', display: 'block' }}
+                                    src={heygenVideoUrl}
+                                    controls
+                                    autoPlay
+                                    playsInline
+                                    onEnded={() => {
+                                        if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+                                    }}
+                                >
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="ai-teacher-video-actions">
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    onClick={() => setHeygenScript(prev => prev ? '' : heygenScript)}
+                                    style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24', borderColor: 'rgba(245,158,11,0.3)' }}
+                                >
+                                    📄 {heygenScript ? 'Hide Script' : 'View Script'}
+                                </button>
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    onClick={() => generateLesson(selectedTopic)}
+                                >
+                                    🎙️ View as Dialogue
+                                </button>
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', borderColor: 'rgba(52,211,153,0.3)', fontWeight: 600 }}
+                                    onClick={() => {
+                                        if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
+                                        stopAllAudio();
+                                        onClose();
+                                    }}
+                                >
+                                    ✅ Complete & Close
+                                </button>
+                            </div>
+
+                            {/* Script panel */}
+                            {heygenScript && (
+                                <div className="tts-script-panel" style={{ marginTop: '16px' }}>
+                                    <div className="tts-script-panel-header">📝 Narration Script ({heygenLanguage === 'ta' ? 'Thanglish' : 'English'})</div>
+                                    <div className="tts-script-panel-body" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                                        {heygenScript}
                                     </div>
                                 </div>
                             )}

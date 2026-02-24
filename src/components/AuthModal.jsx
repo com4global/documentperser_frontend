@@ -148,7 +148,7 @@ export default function AuthModal({ show, onClose, initialMode = 'signin' }) {
   // ── Email Verification Pending Screen ──
   if (mode === 'verify-email') {
     return (
-      <div className="auth-modal-overlay" onClick={handleClose}>
+      <div className="auth-modal-overlay" onClick={(e) => e.stopPropagation()}>
         <div className="auth-modal-content" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', padding: '40px 32px' }}>
           <div style={{ fontSize: '3rem', marginBottom: 16 }}>📧</div>
           <h2 className="auth-modal-title">Check your email</h2>
@@ -171,7 +171,7 @@ export default function AuthModal({ show, onClose, initialMode = 'signin' }) {
   // ── Role Selection Screen ──
   if (mode === 'role-select') {
     return (
-      <div className="auth-modal-overlay" onClick={handleClose}>
+      <div className="auth-modal-overlay" onClick={(e) => e.stopPropagation()}>
         <div className="auth-modal-content role-select-modal" onClick={e => e.stopPropagation()}>
           <div className="auth-modal-header">
             <div className="auth-modal-icon">🎉</div>
@@ -203,7 +203,7 @@ export default function AuthModal({ show, onClose, initialMode = 'signin' }) {
 
   // ── Sign In / Sign Up Screen ──
   return (
-    <div className="auth-modal-overlay" onClick={handleClose}>
+    <div className="auth-modal-overlay" onClick={(e) => e.stopPropagation()}>
       <div className="auth-modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Close Button */}
         <button className="auth-modal-close" onClick={handleClose} aria-label="Close">×</button>

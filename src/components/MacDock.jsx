@@ -13,6 +13,7 @@ const ALL_DOCK_ITEMS = [
     { id: 'legal', emoji: '⚖️', label: 'Legal Analysis', gradient: 'linear-gradient(135deg,#8b5cf6,#ec4899)', roles: ['advocate'] },
     // AI Teacher: all except advocate
     { id: 'teacher', emoji: '🎓', label: 'AI Teacher', gradient: 'linear-gradient(135deg,#f97316,#ef4444)', roles: ['teacher', 'student', 'individual', 'other'] },
+    { id: 'extractor', emoji: '✂️', label: 'PDF Splitter', gradient: 'linear-gradient(135deg,#ec4899,#be185d)', roles: ['teacher', 'student', 'individual', 'other', 'advocate'] },
     { id: 'pricing', emoji: '💳', label: 'Upgrade Plan', gradient: 'linear-gradient(135deg,#f59e0b,#b45309)', roles: ['teacher', 'student', 'individual', 'other', 'advocate'] },
     { id: 'logout', emoji: '🚪', label: 'Logout', gradient: 'linear-gradient(135deg,#6b7280,#4b5563)', roles: ['teacher', 'student', 'individual', 'other', 'advocate'] },
 ];
@@ -70,6 +71,7 @@ export default function MacDock({
             case 'admin': onNavigate?.('admin'); break;
             case 'legal': onNavigate?.('legal'); break;
             case 'teacher': onNavigate?.('teacher'); break;
+            case 'extractor': onNavigate?.('extractor'); break;
             case 'pricing': onNavigate?.('pricing'); break;
             case 'logout': onLogout?.(); break;
             default: break;
@@ -80,7 +82,8 @@ export default function MacDock({
         id === 'chat' ? activeView === 'chat' :
             id === 'admin' ? activeView === 'admin' :
                 id === 'legal' ? activeView === 'legal' :
-                    id === 'teacher' ? activeView === 'teacher' : false
+                    id === 'teacher' ? activeView === 'teacher' :
+                        id === 'extractor' ? activeView === 'extractor' : false
     );
 
     return (
@@ -127,8 +130,14 @@ export default function MacDock({
 // Teacher → 🏫 My Classroom → /teacher
 // Student → 🏫 My Classroom → /student
 const LEFT_DOCK_ITEMS = {
-    teacher: [{ id: 'classroom', emoji: '🏫', label: 'My Classroom', gradient: 'linear-gradient(135deg,#10b981,#065f46)' }],
-    student: [{ id: 'classroom', emoji: '🏫', label: 'My Classroom', gradient: 'linear-gradient(135deg,#6366f1,#3730a3)' }],
+    teacher: [
+        { id: 'classroom', emoji: '🏫', label: 'My Classroom', gradient: 'linear-gradient(135deg,#10b981,#065f46)' },
+        { id: 'avatar-studio', emoji: '🎬', label: 'Avatar Studio', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
+    ],
+    student: [
+        { id: 'classroom', emoji: '🏫', label: 'My Classroom', gradient: 'linear-gradient(135deg,#6366f1,#3730a3)' },
+        { id: 'avatar-studio', emoji: '🎬', label: 'Avatar Studio', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
+    ],
 };
 
 /**
@@ -139,7 +148,7 @@ const LEFT_DOCK_ITEMS = {
  *   role        – 'teacher' | 'student'
  *   onClassroom – () => void
  */
-export function SideDock({ role = 'student', onClassroom }) {
+export function SideDock({ role = 'student', onClassroom, onAvatarStudio }) {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [bouncingId, setBouncingId] = useState(null);
     const items = LEFT_DOCK_ITEMS[role] || LEFT_DOCK_ITEMS.student;
@@ -150,9 +159,14 @@ export function SideDock({ role = 'student', onClassroom }) {
     };
 
     const handleClick = (item) => {
+        console.log('[SideDock] clicked:', item.id);
         setBouncingId(item.id);
         setTimeout(() => setBouncingId(null), 450);
         if (item.id === 'classroom') onClassroom?.();
+        if (item.id === 'avatar-studio') {
+            console.log('[SideDock] navigating to /avatar-studio via window.location');
+            window.location.href = '/avatar-studio';
+        }
     };
 
     return (

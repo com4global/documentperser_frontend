@@ -4,16 +4,20 @@ import { apiService } from '../services/api';
 import { APP_CONFIG, STATUS_TYPES } from '../utils/constants';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import NotificationBar from './NotificationBar';
 import StatsGrid from './StatsGrid';
 import MultimodalUploader from './MultimodalUploader';
 import FilesTable from './FilesTable';
 import FileDistribution from './FileDistribution';
 import LoadingSpinner from './LoadingSpinner';
+import PricingModal from './PricingModal';
+import PageExtractorModal from './PageExtractorModal';
 import '../Styles/AdminDashboard.css';
 
 export default function AdminDashboard() {
   const { t } = useLanguage();
+  const { session } = useAuth();
 
   // State Management
   const [files, setFiles] = useState([]);
@@ -29,6 +33,31 @@ export default function AdminDashboard() {
   // Persist dark mode preference
   const [darkMode, setDarkMode] = useLocalStorage('darkMode', false);
 
+  // Plan-based upload limits
+  const [planLimits, setPlanLimits] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showPageExtractor, setShowPageExtractor] = useState(false);
+
+  // ── Client-side cache keys ────────────────────────────────────────────
+  const CACHE_KEY_FILES = 'admin_dashboard_cache';
+  const CACHE_KEY_BILLING = 'admin_billing_cache';
+  const CACHE_TTL_MS = 60_000; // 1 minute — stale data is OK for quick opens
+
+  const readCache = (key) => {
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return null;
+      const { data, ts } = JSON.parse(raw);
+      // Return data even if stale — we'll revalidate in background
+      return { data, stale: Date.now() - ts > CACHE_TTL_MS };
+    } catch { return null; }
+  };
+
+  const writeCache = (key, data) => {
+    try { sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); }
+    catch { /* storage full — skip */ }
+  };
+
   // Single fetch that gets both files AND stats from the same /api/files endpoint
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -37,6 +66,8 @@ export default function AdminDashboard() {
       const statsData = data?.stats || null;
       setFiles(filesList);
       if (statsData) setStats(statsData);
+      // Update cache on success
+      writeCache(CACHE_KEY_FILES, { files: filesList, stats: statsData });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
@@ -46,7 +77,7 @@ export default function AdminDashboard() {
     setNotification({ message, type });
   }, []);
 
-  // Initialize data — single fetch + static formats (no network needed)
+  // Initialize data — cache-first, then revalidate in background
   useEffect(() => {
     let cancelled = false;
     const init = async () => {
@@ -54,6 +85,16 @@ export default function AdminDashboard() {
         // Formats are static, set them immediately (no API call)
         setSupportedFormats(['.pdf', '.xlsx', '.xls', '.csv', '.txt', '.docx', '.doc', '.xml',
           '.mp4', '.avi', '.mov', '.mp3', '.wav', '.jpg', '.png', '.jpeg']);
+
+        // 1. Instantly hydrate from cache (no spinner!)
+        const cached = readCache(CACHE_KEY_FILES);
+        if (cached?.data) {
+          setFiles(cached.data.files || []);
+          if (cached.data.stats) setStats(cached.data.stats);
+          if (!cancelled) setLoading(false); // UI shows immediately
+        }
+
+        // 2. Always revalidate from network
         await fetchDashboardData();
       } catch (error) {
         if (!cancelled) showNotification('Failed to initialize dashboard', STATUS_TYPES.ERROR);
@@ -63,7 +104,46 @@ export default function AdminDashboard() {
     };
     init();
     
-    // Polling for updates — single call instead of two
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchDashboardData, showNotification]);
+
+  // Fetch billing/plan limits — also cached
+  useEffect(() => {
+    const token = session?.access_token;
+    if (!token) return;
+
+    // Instantly hydrate billing from cache
+    const cachedBilling = readCache(CACHE_KEY_BILLING);
+    if (cachedBilling?.data) {
+      setPlanLimits(cachedBilling.data);
+    }
+
+    fetch(`${APP_CONFIG.API_URL}/api/billing/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          const limits = {
+            plan: d.plan || 'free',
+            maxFileSizeMb: d.max_file_size_mb ?? -1,
+            maxTotalStorageMb: d.max_total_storage_mb ?? -1,
+            allowedFileTypes: d.allowed_file_types ?? 'all',
+            storageUsedMb: d.storage_used_mb ?? 0,
+          };
+          setPlanLimits(limits);
+          writeCache(CACHE_KEY_BILLING, limits);
+        }
+      })
+      .catch(() => { /* billing status unavailable — don't block */ });
+  }, [session]); 
+
+
+  // Polling for updates + Network status monitoring
+  useEffect(() => {
+    let cancelled = false;
     const interval = setInterval(() => {
       if (!uploading && !processing) {
         fetchDashboardData();
@@ -140,7 +220,12 @@ export default function AdminDashboard() {
         }
       }
     } catch (error) {
-      showNotification(`❌ Upload failed: ${error.message}`, STATUS_TYPES.ERROR);
+      if (error.upgradeRequired) {
+        showNotification(error.reason || 'Plan limit reached — please upgrade', STATUS_TYPES.ERROR);
+        setShowUpgradeModal(true);
+      } else {
+        showNotification(`❌ Upload failed: ${error.message}`, STATUS_TYPES.ERROR);
+      }
     } finally {
       setUploading(false);
     }
@@ -318,14 +403,28 @@ export default function AdminDashboard() {
 
         {/* Upload Section */}
         <section className="content-section upload-section">
-          <div className="section-header">
-            <h2 className="section-title">
-              <span className="title-icon">📤</span>
-              {t('uploadContent')}
-            </h2>
-            <div className="section-subtitle">
-              {t('uploadContentDesc')}
+          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h2 className="section-title">
+                <span className="title-icon">📤</span>
+                {t('uploadContent')}
+              </h2>
+              <div className="section-subtitle">
+                {t('uploadContentDesc')}
+              </div>
             </div>
+            <button
+              onClick={() => setShowPageExtractor(true)}
+              style={{
+                background: 'linear-gradient(135deg, rgba(108,92,231,0.15), rgba(0,206,201,0.15))',
+                border: '1px solid rgba(108,92,231,0.3)',
+                color: '#a29bfe', fontWeight: 600, padding: '8px 16px',
+                borderRadius: 10, cursor: 'pointer', fontSize: '0.85rem',
+                whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              ✂️ Extract Pages
+            </button>
           </div>
           <MultimodalUploader
             onUpload={handleUpload}
@@ -341,6 +440,11 @@ export default function AdminDashboard() {
             supportedFormats={supportedFormats}
             selectedFile={selectedFile}
             onFileSelect={handleFileSelect}
+            planLimits={planLimits}
+            onUpgradeNeeded={(reason) => {
+              showNotification(reason, STATUS_TYPES.ERROR);
+              setShowUpgradeModal(true);
+            }}
           />
         </section>
 
@@ -424,6 +528,25 @@ export default function AdminDashboard() {
           </div>
         </div>
       </footer>
+
+      {/* Upgrade Popup — shown when upload limit is hit */}
+      {showUpgradeModal && (
+        <PricingModal
+          onClose={() => setShowUpgradeModal(false)}
+          forceShow={false}
+        />
+      )}
+
+      {/* Page Extractor Modal */}
+      {showPageExtractor && (
+        <PageExtractorModal
+          onClose={() => setShowPageExtractor(false)}
+          onUploadExtracted={(extractedFile) => {
+            handleUpload('file', extractedFile);
+            showNotification(`✂️ Extracted pages uploaded: ${extractedFile.name}`, STATUS_TYPES.SUCCESS);
+          }}
+        />
+      )}
     </div>
   );
 }

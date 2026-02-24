@@ -4,7 +4,7 @@ import { isValidYouTubeUrl, validateFileSize } from '../utils/helpers';
 import { useLanguage } from '../contexts/LanguageContext';
 import '../Styles/AdminDashboard.css';
 
-const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploading, processing, supportedFormats, selectedFile, onFileSelect }) => {
+const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploading, processing, supportedFormats, selectedFile, onFileSelect, planLimits, onUpgradeNeeded }) => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('document');
   const [urlInput, setUrlInput] = useState('');
@@ -40,10 +40,33 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploadi
   };
 
   const handleFileValidation = (file) => {
-    // Check file size
-    if (!validateFileSize(file, APP_CONFIG.MAX_FILE_SIZE)) {
-      alert(`File size exceeds maximum limit of ${APP_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB`);
-      return;
+    // Plan-aware validation
+    if (planLimits) {
+      // Check file type for restricted plans (e.g. free = PDF only)
+      const allowedTypes = planLimits.allowedFileTypes;
+      if (allowedTypes !== 'all' && Array.isArray(allowedTypes)) {
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        if (!allowedTypes.includes(ext)) {
+          const allowed = allowedTypes.map(t => t.replace('.', '').toUpperCase()).join(', ');
+          const reason = `Your ${planLimits.plan.charAt(0).toUpperCase() + planLimits.plan.slice(1)} plan only supports ${allowed} files. Upgrade to upload other formats.`;
+          if (onUpgradeNeeded) { onUpgradeNeeded(reason); return; }
+          alert(reason); return;
+        }
+      }
+
+      // Check per-file size limit
+      const maxMb = planLimits.maxFileSizeMb;
+      if (maxMb !== -1 && file.size > maxMb * 1024 * 1024) {
+        const reason = `File size ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds your ${planLimits.plan.charAt(0).toUpperCase() + planLimits.plan.slice(1)} plan limit of ${maxMb} MB per file. Upgrade for larger uploads.`;
+        if (onUpgradeNeeded) { onUpgradeNeeded(reason); return; }
+        alert(reason); return;
+      }
+    } else {
+      // Fallback: hardcoded limit if planLimits not loaded yet
+      if (!validateFileSize(file, APP_CONFIG.MAX_FILE_SIZE)) {
+        alert(`File size exceeds maximum limit of ${APP_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB`);
+        return;
+      }
     }
 
     // Create synthetic event for onFileSelect
@@ -245,7 +268,13 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploadi
                   <>
                     <div className="drop-icon pulse">📎</div>
                     <div className="drop-text">{t('clickToBrowse')}</div>
-                    <div className="drop-hint">{t('maxSize')}</div>
+                    <div className="drop-hint">
+                      {planLimits ? (
+                        planLimits.maxFileSizeMb === -1
+                          ? 'Unlimited file size'
+                          : `Max ${planLimits.maxFileSizeMb} MB · ${planLimits.allowedFileTypes === 'all' ? 'All formats' : planLimits.allowedFileTypes.map(t => t.replace('.', '').toUpperCase()).join(', ') + ' only'} · ${planLimits.plan.charAt(0).toUpperCase() + planLimits.plan.slice(1)} plan`
+                      ) : t('maxSize')}
+                    </div>
                   </>
                 )}
               </label>

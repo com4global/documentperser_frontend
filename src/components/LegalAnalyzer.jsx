@@ -208,7 +208,7 @@ const LegalAnalyzer = ({ onClose }) => {
     };
 
     return (
-        <div className="legal-analyzer-overlay" onClick={onClose}>
+        <div className="legal-analyzer-overlay" onClick={(e) => e.stopPropagation()}>
             <div className="legal-analyzer-modal" onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}

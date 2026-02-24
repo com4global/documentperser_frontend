@@ -324,6 +324,7 @@ export default function StudentDashboard() {
                 </div>
                 <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button className="sd-btn sd-btn-ghost" onClick={() => navigate('/chat')}>💬 Chat</button>
+                    <button className="sd-btn sd-btn-ghost" onClick={() => { window.location.href = '/avatar-studio'; }}>🎬 Avatar Studio</button>
                     <button className="sd-btn sd-btn-ghost" style={{ color: '#ff8888' }} onClick={handleSignOut}>⎋ Sign Out</button>
                 </nav>
             </div>

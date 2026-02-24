@@ -675,6 +675,7 @@ export default function TeacherDashboard() {
                 <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button className="td-btn td-btn-ghost" onClick={() => navigate('/chat')}>🏠 Home</button>
                     <button className="td-btn td-btn-ghost" onClick={() => navigate('/chat')}>💬 Chat</button>
+                    <button className="td-btn td-btn-ghost" onClick={() => { window.location.href = '/avatar-studio'; }}>🎬 Avatar Studio</button>
                     <button className="td-btn td-btn-ghost" style={{ color: '#ff8888' }} onClick={handleSignOut}>⎋ Sign Out</button>
                 </nav>
             </div>

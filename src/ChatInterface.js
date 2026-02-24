@@ -1078,6 +1078,7 @@ import LegalAnalyzer from './components/LegalAnalyzer';
 import AITeacher from './components/AITeacher';
 import MacDock, { SideDock } from './components/MacDock';
 import PricingModal from './components/PricingModal';
+import PageExtractorModal from './components/PageExtractorModal';
 import { useAuth } from './contexts/AuthContext';
 import { supabase } from './supabaseClient';
 import { useLanguage } from './contexts/LanguageContext';
@@ -1103,6 +1104,7 @@ function ChatInterface() {
   const [showLegalAnalyzer, setShowLegalAnalyzer] = useState(false);
   const [showAITeacher, setShowAITeacher] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
+  const [showPageExtractor, setShowPageExtractor] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
   const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
 
@@ -1300,12 +1302,14 @@ function ChatInterface() {
   const activeView = showAdminPanel ? 'admin'
     : showLegalAnalyzer ? 'legal'
     : showAITeacher ? 'teacher'
+    : showPageExtractor ? 'extractor'
     : 'chat';
 
   const handleDockNavigate = (view) => {
     setShowAdminPanel(view === 'admin');
     setShowLegalAnalyzer(view === 'legal');
     setShowAITeacher(view === 'teacher');
+    setShowPageExtractor(view === 'extractor');
     if (view === 'pricing') setShowPricingModal(true);
   };
 
@@ -1317,6 +1321,13 @@ function ChatInterface() {
       background: 'linear-gradient(135deg, #f0f4ff 0%, #faf5ff 50%, #f0fdf4 100%)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif'
     }}>
+
+      {/* Left Dock — Classroom + Avatar Studio */}
+      <SideDock
+        role={userRole || 'student'}
+        onClassroom={() => navigate(userRole === 'teacher' ? '/teacher' : '/student')}
+        onAvatarStudio={() => { console.log('[SideDock] navigating to /avatar-studio'); window.location.href = '/avatar-studio'; }}
+      />
 
       {/* MAIN CONTENT — full width */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
@@ -1710,7 +1721,7 @@ function ChatInterface() {
               zIndex: 9999,
               padding: '2rem'
             }}
-            onClick={() => setShowAdminPanel(false)}
+            onClick={(e) => e.stopPropagation()}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1799,6 +1810,18 @@ function ChatInterface() {
       {/* Pricing Modal */}
       {showPricingModal && (
         <PricingModal onClose={() => setShowPricingModal(false)} />
+      )}
+
+      {/* Page Extractor Modal */}
+      {showPageExtractor && (
+        <PageExtractorModal
+          onClose={() => setShowPageExtractor(false)}
+          onUploadExtracted={(file) => {
+            setShowPageExtractor(false);
+            // Trigger the upload flow with the extracted file
+            setSelectedFile(file);
+          }}
+        />
       )}
     </div>
   );

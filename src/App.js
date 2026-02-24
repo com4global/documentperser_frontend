@@ -109,6 +109,7 @@ import AdminDashboard from './components/AdminDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import RoleSelectPage from './pages/RoleSelectPage';
+import AvatarVideoStudio from './components/AvatarVideoStudio';
 import './App.css';
 
 // Protected Route Component
@@ -205,6 +206,15 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <RoleSelectPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/avatar-studio"
+          element={
+            <ProtectedRoute>
+              <AvatarVideoStudio />
             </ProtectedRoute>
           }
         />

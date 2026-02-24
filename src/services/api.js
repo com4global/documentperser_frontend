@@ -248,7 +248,24 @@ export const apiService = {
             resolve(JSON.parse(xhr.responseText));
           } else {
             console.error(`❌ Upload failed: status=${xhr.status}, body=${xhr.responseText}`);
-            reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`));
+            // Detect plan-limit 403 responses from the backend
+            let err;
+            if (xhr.status === 403) {
+              try {
+                const body = JSON.parse(xhr.responseText);
+                const detail = body?.detail || body;
+                if (detail?.upgrade_required) {
+                  err = new Error(detail.reason || 'Plan limit reached');
+                  err.upgradeRequired = true;
+                  err.reason = detail.reason;
+                  err.currentPlan = detail.current_plan;
+                }
+              } catch (_) { /* ignore parse errors */ }
+            }
+            if (!err) {
+              err = new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`);
+            }
+            reject(err);
           }
         });
 
@@ -473,6 +490,50 @@ export const apiService = {
     }
   },
 
+  // Professional HeyGen avatar video — premium AI presenter with English subtitles
+  generateHeyGenVideo: async (topic, language = 'en', docName = '', avatarType = 'public', avatarId = '') => {
+    const formData = new FormData();
+    formData.append('topic', topic);
+    formData.append('language', language);
+    formData.append('doc_name', docName);
+    formData.append('avatar_type', avatarType);
+    if (avatarId) formData.append('avatar_id', avatarId);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    // HeyGen can take up to 10 minutes to render + poll — very generous timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 600000); // 600s timeout
+    try {
+      const response = await fetch(`${API_URL}/api/edtech/generate-heygen-video`, {
+        method: 'POST', body: formData, headers, signal: controller.signal
+      });
+      return handleResponse(response);
+    } finally {
+      clearTimeout(timeout);
+    }
+  },
+
+  // Fetch available HeyGen avatars & talking photos for the selector UI
+  getHeyGenAvatars: async () => {
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/heygen-avatars`, { headers });
+    return handleResponse(response);
+  },
+
+  // Upload a user photo as a HeyGen talking photo
+  uploadTalkingPhoto: async (file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const response = await fetch(`${API_URL}/api/edtech/heygen-upload-photo`, {
+      method: 'POST', body: formData, headers,
+    });
+    return handleResponse(response);
+  },
+
+
   askEdtechQuestion: async (question, topic = '', language = 'en') => {
     const formData = new FormData();
     formData.append('question', question);
@@ -671,6 +732,44 @@ export const apiService = {
   },
 
   // Auth (Legacy/Supabase wrapper if needed, but we use Supabase client directly in Context)
+
+  // ---- Avatar Video Studio ----
+  async generateAvatarVideo(config) {
+    const formData = new FormData();
+    formData.append('topic', config.topic || '');
+    formData.append('doc_name', config.docName || '');
+    formData.append('language', config.language || 'en');
+    formData.append('voice', config.voice || 'nova');
+    formData.append('avatar_id', config.avatarId || 'teacher_female_1');
+    formData.append('style', config.style || 'educational');
+    formData.append('aspect_ratio', config.aspectRatio || '16:9');
+    formData.append('include_captions', config.includeCaptions !== false);
+    formData.append('include_broll', config.includeBroll !== false);
+    formData.append('video_style', config.videoStyle || 'educational_diagram');
+    return authenticatedFetch('/api/avatar-video/generate', {
+      method: 'POST', body: formData
+    });
+  },
+
+  async checkAvatarVideoStatus(jobId) {
+    return authenticatedFetch(`/api/avatar-video/status/${jobId}`);
+  },
+
+  async listAvatars() {
+    return authenticatedFetch('/api/avatar-video/avatars');
+  },
+
+  async uploadCustomAvatar(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return authenticatedFetch('/api/avatar-video/avatar/upload', {
+      method: 'POST', body: formData
+    });
+  },
+
+  async listAvatarVideos() {
+    return authenticatedFetch('/api/avatar-video/list');
+  },
 };
 
 export default apiService;

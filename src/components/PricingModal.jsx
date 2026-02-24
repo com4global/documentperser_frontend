@@ -148,7 +148,7 @@ export default function PricingModal({ onClose, forceShow = false }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={(e) => { if (e.target === e.currentTarget && !forceShow) onClose?.(); }}
+                onClick={(e) => e.stopPropagation()}
             >
                 <motion.div
                     className="pricing-modal"

@@ -72,7 +72,8 @@ export default function LandingPage() {
     { icon: '🧠', title: 'Smart Quizzes', description: 'Auto-generated quizzes after each topic to test comprehension and retention', demo: 'Adaptive difficulty' },
     { icon: '📊', title: 'Progress Tracking', description: 'Track every student\'s learning journey — lessons watched, quizzes scored, topics completed', demo: 'Real-time dashboards' },
     { icon: '👩‍🏫', title: 'Classroom Management', description: 'Teachers create classrooms, assign topics, and monitor student progress with join codes', demo: 'One code to join' },
-    { icon: '🌐', title: 'Web & Video Content', description: 'Paste any URL or YouTube link — we extract the content and turn it into lessons', demo: 'Learn from the web' }
+    { icon: '🌐', title: 'Web & Video Content', description: 'Paste any URL or YouTube link — we extract the content and turn it into lessons', demo: 'Learn from the web' },
+    { icon: '✂️', title: 'PDF Splitter', description: 'Extract specific pages or batch-split large PDFs into smaller files — download or vectorize instantly', demo: 'Split & conquer' }
   ];
 
   const pricingPlans = [
@@ -290,7 +291,7 @@ export default function LandingPage() {
       {/* Demo Video Modal */}
       {
         showDemoModal && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => { setShowDemoModal(false); setIsVideoPlaying(false); }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ maxWidth: '900px', width: '100%', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
               <button onClick={() => { setShowDemoModal(false); setIsVideoPlaying(false); }} style={{ position: 'absolute', top: '-40px', right: 0, background: 'none', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer' }}>×</button>
               <video ref={videoRef} controls autoPlay style={{ width: '100%', borderRadius: '12px' }} />
