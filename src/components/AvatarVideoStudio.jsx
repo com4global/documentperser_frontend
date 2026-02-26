@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import apiService from '../services/api';
 import './AvatarVideoStudio.css';
 
@@ -29,11 +29,20 @@ const PIPELINE_STEPS = [
 
 export default function AvatarVideoStudio() {
     const navigate = useNavigate();
+    const location = useLocation();
     const pollRef = useRef(null);
     const fileInputRef = useRef(null);
     const dropZoneRef = useRef(null);
     const videoRef = useRef(null);
     const activeSceneRef = useRef(null);
+
+    // ── Incoming topic from AI Teacher (via query params) ──
+    const incomingParams = useMemo(() => {
+        const params = new URLSearchParams(location.search);
+        const t = params.get('topic');
+        const d = params.get('doc');
+        return (t || d) ? { topic: t || '', doc: d || '' } : null;
+    }, [location.search]);
 
     // ── Wizard step: 1=avatar, 2=content, 3=generate ──
     const [step, setStep] = useState(1);
@@ -68,9 +77,13 @@ export default function AvatarVideoStudio() {
     // ── Active scene tracking for side text panel ──
     const [activeSceneIndex, setActiveSceneIndex] = useState(0);
 
-    // ── Load avatars on mount ──
+    // ── Load avatars on mount + handle incoming AI Teacher params ──
     useEffect(() => {
         loadAvatars();
+        if (incomingParams?.topic) {
+            setTopic(incomingParams.topic);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const loadAvatars = async () => {
@@ -250,10 +263,11 @@ export default function AvatarVideoStudio() {
         setStage('');
         setGenerating(false);
         setActiveSceneIndex(0);
+        setActualDuration(0);
     };
 
     // ── Compute scene timings from resultData ──
-    const sceneTimings = useMemo(() => {
+    const rawSceneTimings = useMemo(() => {
         if (resultData?.scene_timings) return resultData.scene_timings;
         // Fallback: build from scenes + duration_estimate
         if (!resultData?.scenes) return [];
@@ -271,6 +285,29 @@ export default function AvatarVideoStudio() {
             return entry;
         });
     }, [resultData]);
+
+    // ── Recalibrate timings to actual video duration ──
+    // Backend duration_estimate doesn't match real D-ID clip durations,
+    // so we proportionally rescale once the video metadata loads.
+    const [actualDuration, setActualDuration] = useState(0);
+    const sceneTimings = useMemo(() => {
+        if (rawSceneTimings.length === 0) return [];
+        if (!actualDuration || actualDuration <= 0) return rawSceneTimings;
+        const estimatedTotal = rawSceneTimings[rawSceneTimings.length - 1]?.end_time || 1;
+        if (Math.abs(estimatedTotal - actualDuration) < 0.5) return rawSceneTimings;
+        const scale = actualDuration / estimatedTotal;
+        return rawSceneTimings.map(st => ({
+            ...st,
+            start_time: Math.round(st.start_time * scale * 100) / 100,
+            end_time: Math.round(st.end_time * scale * 100) / 100,
+        }));
+    }, [rawSceneTimings, actualDuration]);
+
+    const handleLoadedMetadata = useCallback(() => {
+        if (videoRef.current && videoRef.current.duration && isFinite(videoRef.current.duration)) {
+            setActualDuration(videoRef.current.duration);
+        }
+    }, []);
 
     // ── Video timeupdate handler ──
     const handleTimeUpdate = useCallback(() => {
@@ -290,6 +327,23 @@ export default function AvatarVideoStudio() {
             activeSceneRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     }, [activeSceneIndex]);
+
+    // ── Fetch scene data for My Videos playback ──
+    // When a video is opened from history, try to fetch scene_timings via job_id
+    useEffect(() => {
+        if (videoUrl && !resultData && !generating) {
+            // Extract job_id from URL (e.g. '/static/avatar_video_temp/abc123_final.mp4' -> 'abc123')
+            const match = videoUrl.match(/([a-f0-9]{8,12})_final\.mp4/);
+            if (match) {
+                const jobId = match[1];
+                apiService.checkAvatarVideoStatus(jobId).then(res => {
+                    if (res && (res.scene_timings || res.scenes)) {
+                        setResultData(res);
+                    }
+                }).catch(() => { /* ignore — old jobs may not have scene data */ });
+            }
+        }
+    }, [videoUrl, resultData, generating]);
 
     // ═══════════════════════════════════════════════════════════════
     // ▸ Render
@@ -383,6 +437,33 @@ export default function AvatarVideoStudio() {
                     ═══════════════════════════════════════════ */}
                 {step === 1 && !generating && !videoUrl && (
                     <div className="fade-in">
+                        {/* Topic context banner when coming from AI Teacher */}
+                        {incomingParams?.topic && (
+                            <div style={{
+                                background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(99,102,241,0.1))',
+                                border: '1px solid rgba(139,92,246,0.3)',
+                                borderRadius: '14px',
+                                padding: '14px 20px',
+                                marginBottom: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                            }}>
+                                <span style={{ fontSize: '1.3rem' }}>📚</span>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '0.8rem', color: '#a78bfa', fontWeight: 600, marginBottom: 2 }}>
+                                        Topic from AI Teacher
+                                    </div>
+                                    <div style={{ fontSize: '0.95rem', color: '#e2e8f0', fontWeight: 500 }}>
+                                        {incomingParams.topic}
+                                    </div>
+                                </div>
+                                <span style={{
+                                    fontSize: '0.7rem', padding: '3px 10px', borderRadius: '8px',
+                                    background: 'rgba(139,92,246,0.2)', color: '#a78bfa', fontWeight: 700
+                                }}>SELECT AVATAR ↓</span>
+                            </div>
+                        )}
                         <div className="glass-panel" style={{ textAlign: 'center' }}>
                             <div className="section-title" style={{ fontSize: '0.9rem', marginBottom: 20 }}>
                                 Upload Your Photo or Choose an Avatar
@@ -437,6 +518,9 @@ export default function AvatarVideoStudio() {
                                         onClick={() => {
                                             setSelectedAvatar(av.id);
                                             setUploadPreview(null);
+                                            // Auto-select voice matching avatar gender
+                                            if (av.gender === 'male') setVoice('echo');
+                                            else if (av.gender === 'female') setVoice('nova');
                                         }}
                                         title={av.name}
                                     >
@@ -458,9 +542,16 @@ export default function AvatarVideoStudio() {
                             className="generate-btn"
                             style={{ marginTop: 20 }}
                             disabled={!selectedAvatar}
-                            onClick={() => setStep(2)}
+                            onClick={() => {
+                                if (incomingParams?.topic && topic.trim()) {
+                                    // Topic pre-filled from AI Teacher — skip content step, start generating
+                                    handleGenerate();
+                                } else {
+                                    setStep(2);
+                                }
+                            }}
                         >
-                            Next: Enter Content →
+                            {incomingParams?.topic ? '🎬 Generate Video →' : 'Next: Enter Content →'}
                         </button>
                     </div>
                 )}
@@ -602,6 +693,7 @@ export default function AvatarVideoStudio() {
                                         autoPlay
                                         src={resolveVideoUrl(videoUrl)}
                                         onTimeUpdate={handleTimeUpdate}
+                                        onLoadedMetadata={handleLoadedMetadata}
                                     />
                                 </div>
                             </div>
