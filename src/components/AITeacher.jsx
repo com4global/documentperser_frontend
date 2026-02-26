@@ -62,6 +62,9 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     const [didVideoPresenter, setDidVideoPresenter] = useState('');
     const [didScript, setDidScript] = useState('');
     const [didLoadingStep, setDidLoadingStep] = useState(0);
+    const [didPresenters, setDidPresenters] = useState(null);
+    const [selectedDIDPresenter, setSelectedDIDPresenter] = useState(null);
+    const [didPresentersLoading, setDidPresentersLoading] = useState(false);
     // 0=idle, 1=reading content, 2=writing script, 3=rendering video
 
     // ── HeyGen professional avatar video state ──
@@ -565,31 +568,56 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     };
 
     // ── D-ID Professional Avatar Video ──
-    const startDIDVideoGeneration = async () => {
+    const loadDIDPresenters = async () => {
+        if (didPresenters || didPresentersLoading) return;
+        setDidPresentersLoading(true);
+        try {
+            const result = await apiService.getDIDPresenters();
+            if (result.success && result.presenters) {
+                setDidPresenters(result.presenters);
+            }
+        } catch (err) {
+            console.error('Failed to load D-ID presenters:', err);
+        } finally {
+            setDidPresentersLoading(false);
+        }
+    };
+
+    const openDIDSelection = () => {
+        loadDIDPresenters();
+        setSelectedDIDPresenter(null);
+        setView('did-select');
+    };
+
+    const startDIDVideoGeneration = async (presenter = null) => {
+        const pid = presenter?.id || selectedDIDPresenter?.id || '';
+        console.log('🎬 D-ID generating with presenter:', pid);
         setView('did-loading');
         setDidVideoUrl('');
         setDidScript('');
         setDidLoadingStep(1);
+        setVideoError('');
+        setVideoStatus('');
 
         // Animated step progression UI
         const t2 = setTimeout(() => setDidLoadingStep(2), 4000);
         const t3 = setTimeout(() => setDidLoadingStep(3), 9000);
 
         try {
-            const result = await apiService.generateDIDVideo(selectedTopic, language, selectedDoc);
+            const result = await apiService.generateDIDVideo(selectedTopic, language, selectedDoc, pid);
             clearTimeout(t2); clearTimeout(t3);
             setDidLoadingStep(0);
 
             if (result.success && result.video_url) {
                 setDidVideoUrl(result.video_url);
-                setDidVideoPresenter(result.presenter || 'AI Presenter');
+                setDidVideoPresenter(result.presenter || presenter?.name || 'AI Presenter');
                 setDidScript(result.script || '');
                 setView('did-video');
                 if (onActivityCompleteRef.current) onActivityCompleteRef.current('video', 0);
             } else {
                 setDidLoadingStep(0);
                 setVideoError(result.detail || 'D-ID video generation failed');
-                setView('did-loading'); // stay on loading view with error
+                setView('did-loading');
                 setVideoStatus('failed');
             }
         } catch (err) {
@@ -1344,7 +1372,33 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                     <div className="ai-teacher-doc-arrow">→</div>
                                 </div>
 
-                                {/* Option 3: Professional HeyGen Video — Expanded */}
+                                {/* Option 3: D-ID Lip-Sync Video */}
+                                <div
+                                    className="ai-teacher-mode-card"
+                                    onClick={openDIDSelection}
+                                    style={{
+                                        border: '1px solid rgba(16,185,129,0.4)',
+                                        background: 'rgba(16,185,129,0.08)',
+                                    }}
+                                >
+                                    <div className="ai-teacher-mode-icon">🤖</div>
+                                    <div className="ai-teacher-mode-info">
+                                        <div className="ai-teacher-mode-title">
+                                            AI Presenter Video
+                                            <span style={{
+                                                fontSize: '10px', padding: '2px 8px', borderRadius: '8px',
+                                                background: 'rgba(16,185,129,0.2)', color: '#10b981',
+                                                marginLeft: '8px', fontWeight: 700, letterSpacing: '0.5px'
+                                            }}>D-ID</span>
+                                        </div>
+                                        <div className="ai-teacher-mode-desc">
+                                            Professional AI presenter with lip-synced narration
+                                        </div>
+                                    </div>
+                                    <div className="ai-teacher-doc-arrow">→</div>
+                                </div>
+
+                                {/* Option 4: Professional HeyGen Video — Expanded */}
                                 <div
                                     style={{
                                         border: '1px solid rgba(245,158,11,0.4)',
@@ -1660,7 +1714,123 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                         </div>
                     )}
 
-                    {/* ===== VIDEO LOADING VIEW ===== */}
+                    {/* ===== D-ID AVATAR SELECTION VIEW ===== */}
+                    {view === 'did-select' && (
+                        <div className="ai-teacher-lesson" style={{ maxWidth: '720px', margin: '0 auto' }}>
+                            <button className="ai-teacher-back-btn" onClick={() => setView('mode-select')}>
+                                ← Back to Learning Modes
+                            </button>
+
+                            <h2 style={{ color: '#34d399', marginBottom: '8px', textAlign: 'center' }}>
+                                🤖 Choose Your AI Presenter
+                            </h2>
+                            <p style={{ color: '#94a3b8', textAlign: 'center', marginBottom: '28px', fontSize: '0.9rem' }}>
+                                Select a presenter for <strong style={{ color: '#67e8f9' }}>{selectedTopic}</strong>
+                            </p>
+
+                            {didPresentersLoading ? (
+                                <div style={{ textAlign: 'center', padding: '40px' }}>
+                                    <div className="ai-teacher-loading-spinner" />
+                                    <p style={{ color: '#94a3b8', marginTop: '16px' }}>Loading presenters...</p>
+                                </div>
+                            ) : didPresenters && didPresenters.length > 0 ? (
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                                    gap: '16px',
+                                    marginBottom: '24px'
+                                }}>
+                                    {didPresenters.map(p => {
+                                        const isSelected = selectedDIDPresenter?.id === p.id;
+                                        return (
+                                            <div
+                                                key={p.id}
+                                                onClick={() => setSelectedDIDPresenter(p)}
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    borderRadius: '16px',
+                                                    padding: '20px 16px',
+                                                    textAlign: 'center',
+                                                    background: isSelected
+                                                        ? 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.15))'
+                                                        : 'rgba(255,255,255,0.04)',
+                                                    border: `2px solid ${isSelected ? '#10b981' : 'rgba(255,255,255,0.08)'}`,
+                                                    transition: 'all 0.3s ease',
+                                                    transform: isSelected ? 'scale(1.03)' : 'scale(1)',
+                                                    boxShadow: isSelected ? '0 4px 20px rgba(16,185,129,0.25)' : 'none',
+                                                }}
+                                            >
+                                                {/* Avatar image */}
+                                                <div style={{
+                                                    width: '100px', height: '100px',
+                                                    borderRadius: '50%',
+                                                    margin: '0 auto 12px',
+                                                    overflow: 'hidden',
+                                                    border: `3px solid ${isSelected ? '#10b981' : 'rgba(255,255,255,0.15)'}`,
+                                                    transition: 'border-color 0.3s ease',
+                                                }}>
+                                                    <img
+                                                        src={p.source_url}
+                                                        alt={p.name}
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                                    />
+                                                </div>
+                                                <div style={{
+                                                    fontWeight: 600, fontSize: '1rem',
+                                                    color: isSelected ? '#34d399' : '#e2e8f0',
+                                                    marginBottom: '4px'
+                                                }}>{p.name}</div>
+                                                <div style={{
+                                                    fontSize: '0.8rem',
+                                                    color: '#94a3b8',
+                                                }}>{p.description || p.gender}</div>
+                                                {isSelected && (
+                                                    <div style={{
+                                                        marginTop: '8px',
+                                                        fontSize: '0.75rem',
+                                                        color: '#10b981',
+                                                        fontWeight: 700,
+                                                    }}>✓ Selected</div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p style={{ color: '#f87171', textAlign: 'center' }}>Failed to load presenters</p>
+                            )}
+
+                            {/* Generate button */}
+                            <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                                <button
+                                    className="ai-teacher-qa-btn"
+                                    disabled={!selectedDIDPresenter}
+                                    onClick={() => startDIDVideoGeneration(selectedDIDPresenter)}
+                                    style={{
+                                        background: selectedDIDPresenter
+                                            ? 'linear-gradient(135deg, #10b981, #06b6d4)'
+                                            : 'rgba(255,255,255,0.08)',
+                                        color: selectedDIDPresenter ? '#fff' : '#64748b',
+                                        padding: '14px 40px',
+                                        fontSize: '1.05rem',
+                                        fontWeight: 700,
+                                        borderRadius: '14px',
+                                        border: 'none',
+                                        cursor: selectedDIDPresenter ? 'pointer' : 'not-allowed',
+                                        transition: 'all 0.3s ease',
+                                        boxShadow: selectedDIDPresenter
+                                            ? '0 4px 16px rgba(16,185,129,0.3)'
+                                            : 'none',
+                                    }}
+                                >
+                                    🎬 Generate Presenter Video
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== D-ID LOADING VIEW ===== */}
                     {view === 'video-loading' && (
                         <div className="ai-teacher-loading">
                             <button className="ai-teacher-back-btn" onClick={() => {
@@ -2004,7 +2174,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                 </div>
                             </div>
 
-                            {/* Video Player */}
+                            {/* Video Player — full width */}
                             <div style={{
                                 borderRadius: '16px', overflow: 'hidden',
                                 boxShadow: '0 8px 32px rgba(16,185,129,0.2)',
@@ -2012,7 +2182,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                 background: '#000', marginBottom: '16px'
                             }}>
                                 <video
-                                    style={{ width: '100%', maxHeight: '420px', display: 'block' }}
+                                    style={{ width: '100%', display: 'block' }}
                                     src={didVideoUrl}
                                     controls
                                     autoPlay

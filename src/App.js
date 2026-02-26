@@ -110,6 +110,7 @@ import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import RoleSelectPage from './pages/RoleSelectPage';
 import AvatarVideoStudio from './components/AvatarVideoStudio';
+import PdfEditor from './components/PdfEditor';
 import './App.css';
 
 // Protected Route Component
@@ -215,6 +216,15 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <AvatarVideoStudio />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/pdf-editor"
+          element={
+            <ProtectedRoute>
+              <PdfEditor />
             </ProtectedRoute>
           }
         />

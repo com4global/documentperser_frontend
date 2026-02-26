@@ -467,29 +467,6 @@ export const apiService = {
     }
   },
 
-
-
-  // D-ID realistic avatar video for Individual Learner role
-  generateDIDVideo: async (topic, language = 'en', docName = '') => {
-    const formData = new FormData();
-    formData.append('topic', topic);
-    formData.append('language', language);
-    formData.append('doc_name', docName);
-    const token = await getAuthToken();
-    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-    // D-ID can take up to 3 minutes to render — use AbortController with generous timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 200000); // 200s timeout
-    try {
-      const response = await fetch(`${API_URL}/api/edtech/generate-did-video`, {
-        method: 'POST', body: formData, headers, signal: controller.signal
-      });
-      return handleResponse(response);
-    } finally {
-      clearTimeout(timeout);
-    }
-  },
-
   // Professional HeyGen avatar video — premium AI presenter with English subtitles
   generateHeyGenVideo: async (topic, language = 'en', docName = '', avatarType = 'public', avatarId = '') => {
     const formData = new FormData();
@@ -626,6 +603,33 @@ export const apiService = {
     }
   },
 
+  // ---- D-ID Lip-Sync Video ----
+  getDIDPresenters: async () => {
+    return authenticatedFetch('/api/edtech/did-presenters');
+  },
+
+  generateDIDVideo: async (topic, language = 'en', docName = '', presenterId = '') => {
+    const formData = new FormData();
+    formData.append('topic', topic);
+    formData.append('language', language);
+    formData.append('doc_name', docName);
+    if (presenterId) formData.append('presenter_id', presenterId);
+    const token = await getAuthToken();
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    // D-ID video generation takes 30-90s for rendering
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 180000); // 3 min
+    try {
+      console.log('🎬 Calling D-ID endpoint:', `${API_URL}/api/edtech/generate-did-video`);
+      const response = await fetch(`${API_URL}/api/edtech/generate-did-video`, {
+        method: 'POST', body: formData, headers, signal: controller.signal
+      });
+      return handleResponse(response);
+    } finally {
+      clearTimeout(timeout);
+    }
+  },
+
   // ---- Classroom / LMS ----
   async getUserInfo() {
     return authenticatedFetch('/api/users/me');
@@ -737,6 +741,7 @@ export const apiService = {
   async generateAvatarVideo(config) {
     const formData = new FormData();
     formData.append('topic', config.topic || '');
+    formData.append('script', config.script || '');
     formData.append('doc_name', config.docName || '');
     formData.append('language', config.language || 'en');
     formData.append('voice', config.voice || 'nova');
