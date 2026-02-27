@@ -31,6 +31,7 @@ export default function AvatarVideoStudio() {
     const navigate = useNavigate();
     const location = useLocation();
     const pollRef = useRef(null);
+    const jobIdRef = useRef(null);
     const fileInputRef = useRef(null);
     const dropZoneRef = useRef(null);
     const videoRef = useRef(null);
@@ -59,6 +60,7 @@ export default function AvatarVideoStudio() {
     const [script, setScript] = useState('');
     const [voice, setVoice] = useState('nova');
     const [language, setLanguage] = useState('en');
+    const [videoMode, setVideoMode] = useState('avatar'); // 'avatar' or 'presentation'
 
     // ── Generation state ──
     const [generating, setGenerating] = useState(false);
@@ -73,6 +75,7 @@ export default function AvatarVideoStudio() {
     // ── History ──
     const [showHistory, setShowHistory] = useState(false);
     const [historyVideos, setHistoryVideos] = useState([]);
+    const [activeSlideIndex, setActiveSlideIndex] = useState(0);
 
     // ── Active scene tracking for side text panel ──
     const [activeSceneIndex, setActiveSceneIndex] = useState(0);
@@ -82,9 +85,33 @@ export default function AvatarVideoStudio() {
         loadAvatars();
         if (incomingParams?.topic) {
             setTopic(incomingParams.topic);
+            // Check if a video already exists for this topic (direct lookup)
+            (async () => {
+                try {
+                    const res = await apiService.findVideoByTopic(incomingParams.topic);
+                    if (res.has_video && res.url) {
+                        setVideoUrl(res.url);
+                        // Populate scene data for right-side panel
+                        if (res.scene_timings || res.scenes) {
+                            setResultData(res);
+                        }
+                        setStep(3);
+                    }
+                } catch (err) {
+                    console.log('Could not check for cached video:', err.message);
+                }
+            })();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // ── Auto-match voice to avatar gender ──
+    useEffect(() => {
+        if (!selectedAvatar || avatars.length === 0) return;
+        const av = avatars.find(a => a.id === selectedAvatar);
+        if (av?.gender === 'male') setVoice('echo');
+        else if (av?.gender === 'female') setVoice('nova');
+    }, [selectedAvatar, avatars]);
 
     const loadAvatars = async () => {
         try {
@@ -160,7 +187,8 @@ export default function AvatarVideoStudio() {
                 style: 'educational',
                 aspectRatio: '16:9',
                 includeCaptions: true,
-                includeBroll: false, // No B-roll — just lip-sync avatar
+                includeBroll: videoMode === 'presentation', // Generate scene images for presentation mode
+                videoMode,
             });
 
             if (res.success && res.job_id) {
@@ -179,6 +207,7 @@ export default function AvatarVideoStudio() {
     const startPolling = useCallback((id) => {
         if (pollRef.current) clearInterval(pollRef.current);
 
+        jobIdRef.current = id;
         pollRef.current = setInterval(async () => {
             try {
                 const res = await apiService.checkAvatarVideoStatus(id);
@@ -188,12 +217,14 @@ export default function AvatarVideoStudio() {
                 if (res.status === 'completed') {
                     clearInterval(pollRef.current);
                     pollRef.current = null;
+                    jobIdRef.current = null;
                     setVideoUrl(res.video_url || '');
                     setResultData(res);
                     setGenerating(false);
                 } else if (res.status === 'failed') {
                     clearInterval(pollRef.current);
                     pollRef.current = null;
+                    jobIdRef.current = null;
                     setError(res.error || 'Video generation failed');
                     setGenerating(false);
                 }
@@ -209,6 +240,43 @@ export default function AvatarVideoStudio() {
             if (pollRef.current) clearInterval(pollRef.current);
         };
     }, []);
+
+    // Resume polling when tab becomes visible again (browsers throttle background tabs)
+    useEffect(() => {
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible' && jobIdRef.current && generating) {
+                // Immediately poll once to catch up
+                (async () => {
+                    try {
+                        const res = await apiService.checkAvatarVideoStatus(jobIdRef.current);
+                        if (res.progress !== undefined) setProgress(res.progress);
+                        if (res.stage) setStage(res.stage);
+                        if (res.status === 'completed') {
+                            if (pollRef.current) clearInterval(pollRef.current);
+                            pollRef.current = null;
+                            jobIdRef.current = null;
+                            setVideoUrl(res.video_url || '');
+                            setResultData(res);
+                            setGenerating(false);
+                        } else if (res.status === 'failed') {
+                            if (pollRef.current) clearInterval(pollRef.current);
+                            pollRef.current = null;
+                            jobIdRef.current = null;
+                            setError(res.error || 'Video generation failed');
+                            setGenerating(false);
+                        } else {
+                            // Still processing — restart the interval
+                            startPolling(jobIdRef.current);
+                        }
+                    } catch (err) {
+                        console.error('Visibility resume poll error:', err);
+                    }
+                })();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, [generating, startPolling]);
 
     // ── Load history ──
     const loadHistory = async () => {
@@ -316,6 +384,7 @@ export default function AvatarVideoStudio() {
         for (let i = sceneTimings.length - 1; i >= 0; i--) {
             if (currentTime >= sceneTimings[i].start_time) {
                 setActiveSceneIndex(i);
+                setActiveSlideIndex(i);
                 break;
             }
         }
@@ -437,6 +506,29 @@ export default function AvatarVideoStudio() {
                     ═══════════════════════════════════════════ */}
                 {step === 1 && !generating && !videoUrl && (
                     <div className="fade-in">
+                        {/* Mode Selector */}
+                        <div className="mode-selector">
+                            <button
+                                className={`mode-btn ${videoMode === 'avatar' ? 'active' : ''}`}
+                                onClick={() => setVideoMode('avatar')}
+                            >
+                                <span className="mode-icon">🎭</span>
+                                <div>
+                                    <div className="mode-title">Avatar Mode</div>
+                                    <div className="mode-desc">Full-screen talking avatar</div>
+                                </div>
+                            </button>
+                            <button
+                                className={`mode-btn ${videoMode === 'presentation' ? 'active' : ''}`}
+                                onClick={() => setVideoMode('presentation')}
+                            >
+                                <span className="mode-icon">📊</span>
+                                <div>
+                                    <div className="mode-title">Presentation Mode</div>
+                                    <div className="mode-desc">Slides + diagrams with avatar PiP</div>
+                                </div>
+                            </button>
+                        </div>
                         {/* Topic context banner when coming from AI Teacher */}
                         {incomingParams?.topic && (
                             <div style={{
@@ -626,7 +718,7 @@ export default function AvatarVideoStudio() {
                                 style={{ flex: 1 }}
                             >
                                 <span className="btn-icon">🚀</span>
-                                Generate Lip-Sync Video
+                                {videoMode === 'presentation' ? 'Generate Presentation Video' : 'Generate Lip-Sync Video'}
                             </button>
                         </div>
                     </div>
@@ -681,7 +773,7 @@ export default function AvatarVideoStudio() {
                 {/* ═══════════════════════════════════════════
                     STEP 3: Video Result
                     ═══════════════════════════════════════════ */}
-                {!generating && videoUrl && (
+                {!generating && videoUrl && videoMode === 'avatar' && (
                     <div className="video-preview fade-in">
                         <div className="video-text-split">
                             {/* Left: Video Player */}
@@ -699,6 +791,183 @@ export default function AvatarVideoStudio() {
                             </div>
 
                             {/* Right: Narration Text Panel */}
+                            {sceneTimings.length > 0 && (
+                                <div className="narration-panel">
+                                    <div className="narration-panel-header">
+                                        <span className="narration-icon">📜</span>
+                                        <span>Narration</span>
+                                    </div>
+                                    <div className="narration-scenes">
+                                        {sceneTimings.map((st, i) => (
+                                            <div
+                                                key={i}
+                                                ref={i === activeSceneIndex ? activeSceneRef : null}
+                                                className={`narration-scene-block ${i === activeSceneIndex ? 'active' : ''
+                                                    } ${i < activeSceneIndex ? 'past' : ''}`}
+                                                onClick={() => {
+                                                    if (videoRef.current) {
+                                                        videoRef.current.currentTime = st.start_time;
+                                                        videoRef.current.play();
+                                                    }
+                                                }}
+                                            >
+                                                <div className="scene-label">
+                                                    <span className="scene-number">Scene {i + 1}</span>
+                                                    {st.text_overlay && (
+                                                        <span className="scene-overlay-text">{st.text_overlay}</span>
+                                                    )}
+                                                </div>
+                                                <div className="scene-narration-text">
+                                                    {st.narration}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="video-actions">
+                            <a
+                                href={resolveVideoUrl(videoUrl)}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="video-action-btn primary"
+                            >
+                                ⬇️ Download MP4
+                            </a>
+                            <button className="video-action-btn" onClick={startOver}>
+                                ✨ Create Another
+                            </button>
+                            <button className="video-action-btn" onClick={loadHistory}>
+                                📁 My Videos
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════════════════════════════════
+                    STEP 3B: Presentation Mode Result
+                    ═══════════════════════════════════════════ */}
+                {!generating && videoUrl && videoMode === 'presentation' && (
+                    <div className="video-preview fade-in">
+                        <div className="video-text-split">
+                            {/* Left: Presentation Slide Viewer + PiP Avatar */}
+                            <div className="video-player-side">
+                                <div className="presentation-container">
+                                    {/* Slide Area */}
+                                    <div className="slide-viewer">
+                                        {sceneTimings.length > 0 ? (
+                                            sceneTimings.map((st, i) => {
+                                                const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+                                                // Extract job_id from videoUrl
+                                                const jobMatch = videoUrl.match(/([a-f0-9]{8,12})_final\.mp4/);
+                                                const jobId = jobMatch ? jobMatch[1] : '';
+                                                const slideImgUrl = `${backendUrl}/static/avatar_video_temp/${jobId}_ai_img_${i}.png`;
+
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={`slide ${i === activeSlideIndex ? 'active' : ''}`}
+                                                    >
+                                                        <img
+                                                            src={slideImgUrl}
+                                                            alt={`Scene ${i + 1}`}
+                                                            onError={(e) => {
+                                                                // Fallback: show text slide if image doesn't exist
+                                                                e.target.style.display = 'none';
+                                                                e.target.nextSibling.style.display = 'flex';
+                                                            }}
+                                                        />
+                                                        {/* Text slide fallback */}
+                                                        <div className="slide-text-fallback" style={{ display: 'none' }}>
+                                                            <div className="slide-scene-number">Scene {i + 1}</div>
+                                                            {st.text_overlay && (
+                                                                <h2 className="slide-title">{st.text_overlay}</h2>
+                                                            )}
+                                                            <div className="slide-narration">{st.narration}</div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="slide active">
+                                                <div className="slide-text-fallback" style={{ display: 'flex' }}>
+                                                    <div className="slide-scene-number">🎬</div>
+                                                    <h2 className="slide-title">{topic || 'Presentation'}</h2>
+                                                    <div className="slide-narration">Playing...</div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Scene indicator dots */}
+                                        {sceneTimings.length > 1 && (
+                                            <div className="slide-dots">
+                                                {sceneTimings.map((_, i) => (
+                                                    <button
+                                                        key={i}
+                                                        className={`slide-dot ${i === activeSlideIndex ? 'active' : ''}`}
+                                                        onClick={() => {
+                                                            if (videoRef.current && sceneTimings[i]) {
+                                                                videoRef.current.currentTime = sceneTimings[i].start_time;
+                                                                videoRef.current.play();
+                                                            }
+                                                        }}
+                                                        title={`Scene ${i + 1}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* PiP Avatar Video Overlay */}
+                                    <div className="avatar-pip">
+                                        <video
+                                            ref={videoRef}
+                                            autoPlay
+                                            src={resolveVideoUrl(videoUrl)}
+                                            onTimeUpdate={handleTimeUpdate}
+                                            onLoadedMetadata={handleLoadedMetadata}
+                                        />
+                                    </div>
+
+                                    {/* Audio controls bar */}
+                                    <div className="presentation-controls">
+                                        <button
+                                            className="pres-ctrl-btn"
+                                            onClick={() => {
+                                                if (videoRef.current) {
+                                                    videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+                                                }
+                                            }}
+                                        >
+                                            {videoRef.current?.paused ? '▶️' : '⏸️'}
+                                        </button>
+                                        <input
+                                            type="range"
+                                            className="pres-seek"
+                                            min={0}
+                                            max={actualDuration || 100}
+                                            step={0.1}
+                                            value={videoRef.current?.currentTime || 0}
+                                            onChange={(e) => {
+                                                if (videoRef.current) videoRef.current.currentTime = Number(e.target.value);
+                                            }}
+                                        />
+                                        <button
+                                            className="pres-ctrl-btn"
+                                            onClick={() => {
+                                                if (videoRef.current) videoRef.current.muted = !videoRef.current.muted;
+                                            }}
+                                        >
+                                            🔊
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right: Narration Text Panel (shared) */}
                             {sceneTimings.length > 0 && (
                                 <div className="narration-panel">
                                     <div className="narration-panel-header">

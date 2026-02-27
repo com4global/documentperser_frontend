@@ -751,6 +751,7 @@ export const apiService = {
     formData.append('include_captions', config.includeCaptions !== false);
     formData.append('include_broll', config.includeBroll !== false);
     formData.append('video_style', config.videoStyle || 'educational_diagram');
+    formData.append('video_mode', config.videoMode || 'avatar');
     return authenticatedFetch('/api/avatar-video/generate', {
       method: 'POST', body: formData
     });
@@ -774,6 +775,10 @@ export const apiService = {
 
   async listAvatarVideos() {
     return authenticatedFetch('/api/avatar-video/list');
+  },
+
+  async findVideoByTopic(topic) {
+    return authenticatedFetch(`/api/avatar-video/find-by-topic?topic=${encodeURIComponent(topic)}`);
   },
 };
 
