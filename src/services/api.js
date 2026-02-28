@@ -780,6 +780,23 @@ export const apiService = {
   async findVideoByTopic(topic) {
     return authenticatedFetch(`/api/avatar-video/find-by-topic?topic=${encodeURIComponent(topic)}`);
   },
+
+  // ── Video Generation Dashboard ──
+  async getVideoDashboard() {
+    return authenticatedFetch('/api/avatar-video/dashboard');
+  },
+
+  async startBatchGeneration() {
+    return authenticatedFetch('/api/avatar-video/batch-generate', { method: 'POST' });
+  },
+
+  async getBatchStatus() {
+    return authenticatedFetch('/api/avatar-video/batch-status');
+  },
+
+  async cancelBatchGeneration() {
+    return authenticatedFetch('/api/avatar-video/batch-cancel', { method: 'POST' });
+  },
 };
 
 export default apiService;

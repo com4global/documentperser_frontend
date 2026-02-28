@@ -111,6 +111,7 @@ import StudentDashboard from './components/StudentDashboard';
 import RoleSelectPage from './pages/RoleSelectPage';
 import AvatarVideoStudio from './components/AvatarVideoStudio';
 import PdfEditor from './components/PdfEditor';
+import VideoGenerationDashboard from './components/VideoGenerationDashboard';
 import './App.css';
 
 // Protected Route Component
@@ -225,6 +226,15 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <PdfEditor />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/video-dashboard"
+          element={
+            <ProtectedRoute>
+              <VideoGenerationDashboard />
             </ProtectedRoute>
           }
         />
