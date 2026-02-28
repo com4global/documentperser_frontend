@@ -91,6 +91,18 @@ const VideoGenerationDashboard = () => {
         }
     };
 
+    const handleResumeBatch = async () => {
+        setBatchStarting(true);
+        try {
+            await apiService.resumeBatchGeneration();
+            setTimeout(fetchDashboard, 2000);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBatchStarting(false);
+        }
+    };
+
     const handleCancelBatch = async () => {
         try {
             await apiService.cancelBatchGeneration();
@@ -127,7 +139,8 @@ const VideoGenerationDashboard = () => {
     const batchStatus = data?.batch_status || {};
     const isRunning = batchStatus.running;
     const isCancelling = isRunning && batchStatus.cancelled;  // backend says cancelled but still finishing current topic
-    const isPaused = batchStatus.paused && !isRunning;
+    const userCancelled = batchStatus.user_cancelled;  // persistent cancel — survives backend restarts
+    const isPaused = (batchStatus.paused || userCancelled) && !isRunning;
     const hasPending = (summary.topics_without_video || 0) > 0;
 
     return (
@@ -157,7 +170,7 @@ const VideoGenerationDashboard = () => {
                                 ...(batchStarting || !hasPending ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
                                 ...(isPaused && hasPending ? { background: 'linear-gradient(135deg, #f59e0b, #d97706)' } : {}),
                             }}
-                            onClick={handleStartBatch}
+                            onClick={isPaused ? handleResumeBatch : handleStartBatch}
                             disabled={batchStarting || !hasPending}
                         >
                             {batchStarting
@@ -286,7 +299,7 @@ const VideoGenerationDashboard = () => {
                 )}
                 {isPaused && hasPending && !isRunning && (
                     <div style={{ ...styles.currentTopic, color: '#f59e0b' }}>
-                        ⏸️ Batch paused — {summary.topics_without_video} topics remaining. Click <strong>"Resume Batch"</strong> to continue.
+                        ⏸️ Batch {userCancelled ? 'cancelled' : 'paused'} — {summary.topics_without_video} topics remaining. Click <strong>"Resume Batch"</strong> to continue.
                     </div>
                 )}
             </div>

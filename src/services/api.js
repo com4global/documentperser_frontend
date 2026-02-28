@@ -797,6 +797,10 @@ export const apiService = {
   async cancelBatchGeneration() {
     return authenticatedFetch('/api/avatar-video/batch-cancel', { method: 'POST' });
   },
+
+  async resumeBatchGeneration() {
+    return authenticatedFetch('/api/avatar-video/batch-resume', { method: 'POST' });
+  },
 };
 
 export default apiService;

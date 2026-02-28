@@ -1395,15 +1395,15 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                     <div className="ai-teacher-mode-icon">🎬</div>
                                     <div className="ai-teacher-mode-info">
                                         <div className="ai-teacher-mode-title">
-                                            Avatar Studio
+                                            {t('avatarStudioTitle') || 'Avatar Studio'}
                                             <span style={{
                                                 fontSize: '10px', padding: '2px 8px', borderRadius: '8px',
                                                 background: 'rgba(139,92,246,0.2)', color: '#a78bfa',
                                                 marginLeft: '8px', fontWeight: 700, letterSpacing: '0.5px'
-                                            }}>LIP-SYNC</span>
+                                            }}>{t('lipSync') || 'LIP-SYNC'}</span>
                                         </div>
                                         <div className="ai-teacher-mode-desc">
-                                            HD AI avatar with professional lip-sync narration & scene panel
+                                            {t('avatarStudioDesc') || 'HD AI avatar with professional lip-sync narration & scene panel'}
                                         </div>
                                     </div>
                                     <div className="ai-teacher-doc-arrow">→</div>
