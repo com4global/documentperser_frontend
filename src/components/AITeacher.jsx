@@ -71,11 +71,15 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     const [heygenVideoUrl, setHeygenVideoUrl] = useState('');
     const [heygenScript, setHeygenScript] = useState('');
     const [heygenLoadingStep, setHeygenLoadingStep] = useState(0);
+    // eslint-disable-next-line no-unused-vars
     const [heygenLanguage, setHeygenLanguage] = useState('en');
+    // eslint-disable-next-line no-unused-vars
     const [heygenAvatarType, setHeygenAvatarType] = useState('public');   // 'public' | 'talking_photo'
+    // eslint-disable-next-line no-unused-vars
     const [heygenAvatarId, setHeygenAvatarId] = useState('');             // specific avatar/photo ID
     const [availableAvatars, setAvailableAvatars] = useState(null);       // { public_avatars, talking_photos }
     const [avatarsLoading, setAvatarsLoading] = useState(false);
+    // eslint-disable-next-line no-unused-vars
     const [showHeygenOptions, setShowHeygenOptions] = useState(false);    // expand/collapse
 
 
@@ -583,6 +587,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
         }
     };
 
+    // eslint-disable-next-line no-unused-vars
     const openDIDSelection = () => {
         loadDIDPresenters();
         setSelectedDIDPresenter(null);
@@ -629,6 +634,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
     };
 
     // ── HeyGen Professional Avatar Video ──
+    // eslint-disable-next-line no-unused-vars
     const loadHeyGenAvatars = async () => {
         if (availableAvatars || avatarsLoading) return;
         setAvatarsLoading(true);

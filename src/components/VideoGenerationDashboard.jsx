@@ -6,6 +6,7 @@ const VideoGenerationDashboard = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const requestedTopic = searchParams.get('topic') || '';
+    // eslint-disable-next-line no-unused-vars
     const requestedDoc = searchParams.get('doc') || '';
 
     const [data, setData] = useState(null);
