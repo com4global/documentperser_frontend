@@ -790,7 +790,7 @@ export const apiService = {
     return authenticatedFetch('/api/avatar-video/batch-generate', { method: 'POST' });
   },
 
-  async getBatchStatus() {
+  async getVideoBatchStatus() {
     return authenticatedFetch('/api/avatar-video/batch-status');
   },
 

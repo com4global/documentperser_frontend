@@ -13,7 +13,6 @@ const VideoGenerationDashboard = () => {
     const [error, setError] = useState(null);
     const [expandedDocs, setExpandedDocs] = useState({});
     const [batchStarting, setBatchStarting] = useState(false);
-    const [batchCancelling, setBatchCancelling] = useState(false);
     const [dismissedBanner, setDismissedBanner] = useState(false);
     const pollRef = useRef(null);
     const highlightRef = useRef(null);
@@ -45,17 +44,13 @@ const VideoGenerationDashboard = () => {
     // Auto-refresh every 5 seconds when batch is running
     useEffect(() => {
         const isRunning = data?.batch_status?.running;
-        // Clear cancelling state when batch is no longer running
-        if (!isRunning && batchCancelling) {
-            setBatchCancelling(false);
-        }
         if (isRunning) {
             pollRef.current = setInterval(fetchDashboard, 5000);
         } else {
             if (pollRef.current) clearInterval(pollRef.current);
         }
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    }, [data?.batch_status?.running, fetchDashboard, batchCancelling]);
+    }, [data?.batch_status?.running, fetchDashboard]);
 
     // Scroll to highlighted topic — only ONCE on first load
     const hasScrolledRef = useRef(false);
@@ -96,17 +91,15 @@ const VideoGenerationDashboard = () => {
     };
 
     const handleCancelBatch = async () => {
-        setBatchCancelling(true);
         try {
             await apiService.cancelBatchGeneration();
             // Poll quickly to catch the state change
-            setTimeout(fetchDashboard, 1000);
-            setTimeout(fetchDashboard, 3000);
-            setTimeout(fetchDashboard, 6000);
+            setTimeout(fetchDashboard, 500);
+            setTimeout(fetchDashboard, 2000);
+            setTimeout(fetchDashboard, 5000);
         } catch (err) {
             setError(err.message);
         }
-        // Don't clear cancelling here — wait for next poll to show running=false
     };
 
     const toggleDoc = (docName) => {
@@ -132,6 +125,7 @@ const VideoGenerationDashboard = () => {
     const documents = data?.documents || [];
     const batchStatus = data?.batch_status || {};
     const isRunning = batchStatus.running;
+    const isCancelling = isRunning && batchStatus.cancelled;  // backend says cancelled but still finishing current topic
     const isPaused = batchStatus.paused && !isRunning;
     const hasPending = (summary.topics_without_video || 0) > 0;
 
@@ -148,12 +142,12 @@ const VideoGenerationDashboard = () => {
                         <button
                             style={{
                                 ...styles.cancelBtn,
-                                ...(batchCancelling ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                                ...(isCancelling ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
                             }}
                             onClick={handleCancelBatch}
-                            disabled={batchCancelling}
+                            disabled={isCancelling}
                         >
-                            {batchCancelling ? '⏳ Cancelling...' : '⏹ Cancel Batch'}
+                            {isCancelling ? '⏳ Cancelling...' : '⏹ Cancel Batch'}
                         </button>
                     ) : (
                         <button
@@ -284,7 +278,7 @@ const VideoGenerationDashboard = () => {
                         </span>
                     </div>
                 )}
-                {batchCancelling && isRunning && (
+                {isCancelling && (
                     <div style={{ ...styles.currentTopic, color: '#f59e0b' }}>
                         ⏳ Cancelling... will stop after current topic finishes
                     </div>
