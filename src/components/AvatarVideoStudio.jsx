@@ -60,7 +60,7 @@ export default function AvatarVideoStudio() {
     const [script, setScript] = useState('');
     const [voice, setVoice] = useState('nova');
     const [language, setLanguage] = useState('en');
-    const [videoMode, setVideoMode] = useState('avatar'); // 'avatar' or 'presentation'
+    const [videoMode, setVideoMode] = useState('presentation'); // 'avatar' or 'presentation'
 
     // ── Generation state ──
     const [generating, setGenerating] = useState(false);
@@ -85,20 +85,59 @@ export default function AvatarVideoStudio() {
         loadAvatars();
         if (incomingParams?.topic) {
             setTopic(incomingParams.topic);
-            // Check if a video already exists for this topic (direct lookup)
+            // Check if a video already exists for this topic (robust lookup with fallback)
             (async () => {
-                try {
-                    const res = await apiService.findVideoByTopic(incomingParams.topic);
-                    if (res.has_video && res.url) {
-                        setVideoUrl(res.url);
-                        // Populate scene data for right-side panel
-                        if (res.scene_timings || res.scenes) {
-                            setResultData(res);
+                // Strategy 1: Direct topic lookup (fastest)
+                let found = false;
+                for (let attempt = 0; attempt < 2 && !found; attempt++) {
+                    try {
+                        if (attempt > 0) await new Promise(r => setTimeout(r, 1000)); // brief retry delay
+                        console.log(`[AvatarStudio] findVideoByTopic attempt ${attempt + 1} for "${incomingParams.topic}"`);
+                        const res = await apiService.findVideoByTopic(incomingParams.topic);
+                        console.log('[AvatarStudio] findVideoByTopic result:', res?.has_video, res?.url);
+                        if (res.has_video && res.url) {
+                            setVideoUrl(res.url);
+                            if (res.scene_timings || res.scenes) setResultData(res);
+                            setVideoMode(res.video_mode || 'presentation');
+                            setStep(3);
+                            found = true;
                         }
-                        setStep(3);
+                    } catch (err) {
+                        console.warn(`[AvatarStudio] findVideoByTopic attempt ${attempt + 1} failed:`, err.message);
                     }
-                } catch (err) {
-                    console.log('Could not check for cached video:', err.message);
+                }
+
+                // Strategy 2: Fallback — scan video list for a matching topic
+                if (!found) {
+                    try {
+                        console.log('[AvatarStudio] Falling back to listAvatarVideos...');
+                        const listRes = await apiService.listAvatarVideos();
+                        const matchKey = incomingParams.topic.trim().toLowerCase();
+                        const match = (listRes.videos || []).find(v =>
+                            (v.topic || '').trim().toLowerCase() === matchKey ||
+                            (v.name || '').trim().toLowerCase() === matchKey
+                        );
+                        if (match && match.url) {
+                            console.log('[AvatarStudio] Found match in video list:', match.url);
+                            setVideoUrl(match.url);
+                            setVideoMode(match.video_mode || 'presentation');
+                            setStep(3);
+                            // Try to fetch scene data via status endpoint
+                            const jobMatch = match.url.match(/([a-f0-9]{8,12})_final\.mp4/);
+                            if (jobMatch) {
+                                try {
+                                    const statusRes = await apiService.checkAvatarVideoStatus(jobMatch[1]);
+                                    if (statusRes && (statusRes.scene_timings || statusRes.scenes)) {
+                                        setResultData(statusRes);
+                                    }
+                                } catch (_) { /* scene data optional */ }
+                            }
+                        } else {
+                            console.log('[AvatarStudio] No matching video found in list for topic:', incomingParams.topic);
+                        }
+                    } catch (err) {
+                        console.warn('[AvatarStudio] listAvatarVideos fallback failed:', err.message);
+                    }
                 }
             })();
         }
@@ -408,6 +447,8 @@ export default function AvatarVideoStudio() {
                 apiService.checkAvatarVideoStatus(jobId).then(res => {
                     if (res && (res.scene_timings || res.scenes)) {
                         setResultData(res);
+                        // Restore video_mode from saved metadata (default to presentation)
+                        setVideoMode(res.video_mode || 'presentation');
                     }
                 }).catch(() => { /* ignore — old jobs may not have scene data */ });
             }
@@ -442,6 +483,8 @@ export default function AvatarVideoStudio() {
                                 <div key={i} className="history-card" onClick={() => {
                                     setVideoUrl(vid.url);
                                     setResultData(null);
+                                    // Restore video_mode from saved metadata (default to presentation)
+                                    setVideoMode(vid.video_mode || 'presentation');
                                     setShowHistory(false);
                                     setStep(3);
                                 }}>
