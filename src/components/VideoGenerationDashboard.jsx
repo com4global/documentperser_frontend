@@ -52,9 +52,11 @@ const VideoGenerationDashboard = () => {
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [data?.batch_status?.running, fetchDashboard]);
 
-    // Scroll to highlighted topic
+    // Scroll to highlighted topic — only ONCE on first load
+    const hasScrolledRef = useRef(false);
     useEffect(() => {
-        if (requestedTopic && highlightRef.current && !loading) {
+        if (requestedTopic && highlightRef.current && !loading && !hasScrolledRef.current) {
+            hasScrolledRef.current = true;
             setTimeout(() => {
                 highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 300);
