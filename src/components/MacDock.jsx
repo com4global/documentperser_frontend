@@ -164,8 +164,8 @@ export function SideDock({ role = 'student', onClassroom, onAvatarStudio }) {
         setTimeout(() => setBouncingId(null), 450);
         if (item.id === 'classroom') onClassroom?.();
         if (item.id === 'avatar-studio') {
-            console.log('[SideDock] navigating to /avatar-studio via window.location');
-            window.location.href = '/avatar-studio';
+            console.log('[SideDock] navigating to /video-dashboard via window.location');
+            window.location.href = '/video-dashboard';
         }
     };
 

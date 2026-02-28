@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiService from '../services/api';
 
 const VideoGenerationDashboard = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const requestedTopic = searchParams.get('topic') || '';
+    const requestedDoc = searchParams.get('doc') || '';
+
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [expandedDocs, setExpandedDocs] = useState({});
     const [batchStarting, setBatchStarting] = useState(false);
+    const [dismissedBanner, setDismissedBanner] = useState(false);
     const pollRef = useRef(null);
+    const highlightRef = useRef(null);
 
     const fetchDashboard = useCallback(async () => {
         try {
@@ -45,6 +51,30 @@ const VideoGenerationDashboard = () => {
         }
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [data?.batch_status?.running, fetchDashboard]);
+
+    // Scroll to highlighted topic
+    useEffect(() => {
+        if (requestedTopic && highlightRef.current && !loading) {
+            setTimeout(() => {
+                highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+    }, [requestedTopic, loading, data]);
+
+    // Find the requested topic info
+    const findRequestedTopic = () => {
+        if (!requestedTopic || !data?.documents) return null;
+        for (const doc of data.documents) {
+            for (const t of (doc.topics || [])) {
+                if (t.title?.toLowerCase() === requestedTopic.toLowerCase()) {
+                    return { ...t, doc_name: doc.doc_name };
+                }
+            }
+        }
+        return null;
+    };
+
+    const requestedTopicInfo = data ? findRequestedTopic() : null;
 
     const handleStartBatch = async () => {
         setBatchStarting(true);
@@ -106,7 +136,10 @@ const VideoGenerationDashboard = () => {
                         </button>
                     ) : (
                         <button
-                            style={styles.generateBtn}
+                            style={{
+                                ...styles.generateBtn,
+                                ...(batchStarting || summary.topics_without_video === 0 ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
+                            }}
                             onClick={handleStartBatch}
                             disabled={batchStarting || summary.topics_without_video === 0}
                         >
@@ -118,6 +151,59 @@ const VideoGenerationDashboard = () => {
             </header>
 
             {error && <div style={styles.errorBanner}>⚠️ {error}</div>}
+
+            {/* Requested Topic Banner — shown when user came from AITeacher */}
+            {requestedTopic && !dismissedBanner && requestedTopicInfo && (
+                <div style={requestedTopicInfo.has_video ? styles.topicBannerSuccess : styles.topicBannerWait}>
+                    <div style={styles.bannerContent}>
+                        <div style={styles.bannerIcon}>
+                            {requestedTopicInfo.has_video ? '🎬' : '⏳'}
+                        </div>
+                        <div style={styles.bannerText}>
+                            {requestedTopicInfo.has_video ? (
+                                <>
+                                    <strong>Video ready!</strong> The video for <strong>"{requestedTopic}"</strong> is available.
+                                </>
+                            ) : (
+                                <>
+                                    <strong>Video not ready yet</strong> — The video for <strong>"{requestedTopic}"</strong> is still being processed.
+                                    Please wait some time for it to complete. Meanwhile, you can <strong>watch other videos</strong> that are already ready below! 🎥
+                                </>
+                            )}
+                        </div>
+                        <div style={styles.bannerActions}>
+                            {requestedTopicInfo.has_video && (
+                                <button
+                                    style={styles.bannerPlayBtn}
+                                    onClick={() => handlePlayVideo(requestedTopic)}
+                                >
+                                    ▶ Watch Now
+                                </button>
+                            )}
+                            <button
+                                style={styles.bannerDismissBtn}
+                                onClick={() => setDismissedBanner(true)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Requested topic not found banner */}
+            {requestedTopic && !dismissedBanner && !requestedTopicInfo && data && (
+                <div style={styles.topicBannerWait}>
+                    <div style={styles.bannerContent}>
+                        <div style={styles.bannerIcon}>⏳</div>
+                        <div style={styles.bannerText}>
+                            <strong>Topic "{requestedTopic}" not found yet.</strong> It may still be processing.
+                            Meanwhile, browse and watch other available videos below! 🎥
+                        </div>
+                        <button style={styles.bannerDismissBtn} onClick={() => setDismissedBanner(true)}>✕</button>
+                    </div>
+                </div>
+            )}
 
             {/* Summary Cards */}
             <div style={styles.summaryGrid}>
@@ -215,14 +301,18 @@ const VideoGenerationDashboard = () => {
                                         {docTopics.map((topic, idx) => {
                                             const isCurrentlyGenerating = isRunning &&
                                                 batchStatus.current_topic?.toLowerCase() === topic.title?.toLowerCase();
+                                            const isHighlighted = requestedTopic &&
+                                                topic.title?.toLowerCase() === requestedTopic.toLowerCase();
 
                                             return (
                                                 <div
                                                     key={idx}
+                                                    ref={isHighlighted ? highlightRef : null}
                                                     style={{
                                                         ...styles.topicRow,
                                                         ...(isCurrentlyGenerating ? styles.topicRowActive : {}),
                                                         ...(topic.has_video ? styles.topicRowDone : {}),
+                                                        ...(isHighlighted ? styles.topicRowHighlighted : {}),
                                                     }}
                                                 >
                                                     <div style={styles.topicLeft}>
@@ -232,7 +322,15 @@ const VideoGenerationDashboard = () => {
                                                             ) : '⏳'}
                                                         </span>
                                                         <div>
-                                                            <div style={styles.topicTitle}>{topic.title}</div>
+                                                            <div style={{
+                                                                ...styles.topicTitle,
+                                                                ...(isHighlighted ? { color: '#fff', fontWeight: 700 } : {}),
+                                                            }}>
+                                                                {topic.title}
+                                                                {isHighlighted && (
+                                                                    <span style={styles.selectedBadge}>SELECTED</span>
+                                                                )}
+                                                            </div>
                                                             {topic.description && (
                                                                 <div style={styles.topicDesc}>{topic.description}</div>
                                                             )}
@@ -257,16 +355,17 @@ const VideoGenerationDashboard = () => {
                                                                 {topic.difficulty}
                                                             </span>
                                                         )}
-                                                        {topic.has_video && (
+                                                        {topic.has_video ? (
                                                             <button
-                                                                style={styles.playBtn}
+                                                                style={isHighlighted ? styles.playBtnHighlighted : styles.playBtn}
                                                                 onClick={(e) => { e.stopPropagation(); handlePlayVideo(topic.title); }}
                                                             >
-                                                                ▶ Play
+                                                                ▶ {isHighlighted ? 'Watch Now' : 'Play'}
                                                             </button>
-                                                        )}
-                                                        {isCurrentlyGenerating && (
-                                                            <span style={styles.generatingBadge}>Generating...</span>
+                                                        ) : (
+                                                            <span style={styles.pendingLabel}>
+                                                                {isCurrentlyGenerating ? 'Generating...' : 'Pending'}
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -352,6 +451,38 @@ const styles = {
         fontSize: '0.85rem',
     },
 
+    // ── Topic Banner (when user comes from AITeacher) ──
+    topicBannerSuccess: {
+        background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
+        borderRadius: 14, padding: '16px 20px', marginBottom: 16,
+        animation: 'slideDown 0.3s ease-out',
+    },
+    topicBannerWait: {
+        background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
+        borderRadius: 14, padding: '16px 20px', marginBottom: 16,
+        animation: 'slideDown 0.3s ease-out',
+    },
+    bannerContent: {
+        display: 'flex', alignItems: 'center', gap: 14,
+    },
+    bannerIcon: { fontSize: '2rem', flexShrink: 0 },
+    bannerText: {
+        flex: 1, fontSize: '0.88rem', color: '#e0e0f0', lineHeight: 1.5,
+    },
+    bannerActions: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 },
+    bannerPlayBtn: {
+        background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+        color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 10,
+        fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem',
+        boxShadow: '0 4px 16px rgba(34,197,94,0.3)',
+        transition: 'all 0.2s',
+    },
+    bannerDismissBtn: {
+        background: 'rgba(255,255,255,0.1)', border: 'none',
+        color: '#a0a0c0', padding: '6px 10px', borderRadius: 6,
+        cursor: 'pointer', fontSize: '0.85rem',
+    },
+
     summaryGrid: {
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
         gap: 12, marginBottom: 20,
@@ -434,6 +565,11 @@ const styles = {
         background: 'rgba(139,92,246,0.08)',
         borderLeft: '3px solid #8b5cf6',
     },
+    topicRowHighlighted: {
+        background: 'rgba(139,92,246,0.15)',
+        borderLeft: '4px solid #8b5cf6',
+        boxShadow: 'inset 0 0 20px rgba(139,92,246,0.1)',
+    },
     topicLeft: { display: 'flex', alignItems: 'flex-start', gap: 12, flex: 1 },
     topicStatus: { fontSize: '1.1rem', minWidth: 24, textAlign: 'center', marginTop: 2 },
     topicTitle: { fontSize: '0.85rem', fontWeight: 500, color: '#d0d0e8' },
@@ -443,6 +579,13 @@ const styles = {
         fontSize: '0.65rem', padding: '2px 8px',
         background: 'rgba(139,92,246,0.12)', color: '#a78bfa',
         borderRadius: 4, whiteSpace: 'nowrap',
+    },
+    selectedBadge: {
+        display: 'inline-block', marginLeft: 8,
+        fontSize: '0.6rem', padding: '2px 8px',
+        background: 'rgba(139,92,246,0.3)', color: '#c4b5fd',
+        borderRadius: 4, fontWeight: 700, letterSpacing: '0.5px',
+        verticalAlign: 'middle',
     },
     topicRight: { display: 'flex', alignItems: 'center', gap: 8 },
     difficultyBadge: {
@@ -454,6 +597,19 @@ const styles = {
         color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 8,
         fontWeight: 600, cursor: 'pointer', fontSize: '0.75rem',
         transition: 'all 0.2s',
+    },
+    playBtnHighlighted: {
+        background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+        color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 8,
+        fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem',
+        boxShadow: '0 4px 16px rgba(34,197,94,0.3)',
+        transition: 'all 0.2s',
+        animation: 'pulse 2s infinite',
+    },
+    pendingLabel: {
+        fontSize: '0.7rem', padding: '3px 10px',
+        background: 'rgba(139,92,246,0.15)', color: '#a78bfa',
+        borderRadius: 6, fontWeight: 500,
     },
     generatingBadge: {
         fontSize: '0.7rem', padding: '3px 10px',
@@ -474,6 +630,7 @@ if (typeof document !== 'undefined') {
     styleTag.textContent = `
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
   `;
 }
 

@@ -1379,7 +1379,7 @@ const AITeacher = ({ onClose, initialDoc = '', initialTopic = '', onActivityComp
                                         const params = new URLSearchParams();
                                         if (selectedTopic) params.set('topic', selectedTopic);
                                         if (selectedDoc) params.set('doc', selectedDoc);
-                                        window.location.href = '/avatar-studio' + (params.toString() ? '?' + params.toString() : '');
+                                        window.location.href = '/video-dashboard' + (params.toString() ? '?' + params.toString() : '');
                                     }}
                                     style={{
                                         border: '1px solid rgba(139,92,246,0.4)',
