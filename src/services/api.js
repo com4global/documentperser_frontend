@@ -41,9 +41,9 @@ const authenticatedFetch = async (endpoint, options = {}) => {
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
 
-  // Timeout: 10s for GET (fast reads), 120s for mutations (upload/delete can be slow)
+  // Timeout: 30s for GET, 120s for mutations (upload/delete can be slow)
   const method = (options.method || 'GET').toUpperCase();
-  const timeoutMs = method === 'GET' ? 10000 : 120000;
+  const timeoutMs = method === 'GET' ? 30000 : 120000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
