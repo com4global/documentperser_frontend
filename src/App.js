@@ -112,6 +112,7 @@ import RoleSelectPage from './pages/RoleSelectPage';
 import AvatarVideoStudio from './components/AvatarVideoStudio';
 import PdfEditor from './components/PdfEditor';
 import VideoGenerationDashboard from './components/VideoGenerationDashboard';
+import SuperAdminPanel from './components/SuperAdminPanel';
 import './App.css';
 
 // Protected Route Component
@@ -235,6 +236,15 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <VideoGenerationDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/super-admin"
+          element={
+            <ProtectedRoute>
+              <SuperAdminPanel />
             </ProtectedRoute>
           }
         />
