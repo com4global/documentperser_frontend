@@ -20,7 +20,7 @@ const VideoGenerationDashboard = () => {
     const pollRef = useRef(null);
     const highlightRef = useRef(null);
 
-    const fetchDashboard = useCallback(async () => {
+    const fetchDashboard = useCallback(async (retryCount = 0) => {
         try {
             const res = await apiService.getVideoDashboard(requestedDoc);
             if (res && res.success) {
@@ -38,12 +38,19 @@ const VideoGenerationDashboard = () => {
                 setError(res?.error || res?.detail || 'API returned unsuccessful response');
             }
         } catch (err) {
-            console.warn('Video dashboard fetch failed:', err.message);
-            // Show the actual error so users know what went wrong
+            console.warn(`Video dashboard fetch failed (attempt ${retryCount + 1}):`, err.message);
+            // Auto-retry once after 2s (handles Vercel cold-start timeouts)
+            if (retryCount < 1) {
+                setError('Loading dashboard... retrying...');
+                setTimeout(() => fetchDashboard(retryCount + 1), 2000);
+                return; // don't setLoading(false) yet
+            }
             setError(`Failed to load dashboard: ${err.message}`);
             setData({ summary: {}, documents: [], batch_status: {} });
         } finally {
-            setLoading(false);
+            if (retryCount >= 1 || !error?.includes?.('retrying')) {
+                setLoading(false);
+            }
         }
     }, [requestedDoc]); // eslint-disable-line react-hooks/exhaustive-deps
 
