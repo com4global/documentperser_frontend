@@ -6,7 +6,6 @@ const VideoGenerationDashboard = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const requestedTopic = searchParams.get('topic') || '';
-    // eslint-disable-next-line no-unused-vars
     const requestedDoc = searchParams.get('doc') || '';
 
     const [data, setData] = useState(null);
@@ -23,7 +22,7 @@ const VideoGenerationDashboard = () => {
 
     const fetchDashboard = useCallback(async () => {
         try {
-            const res = await apiService.getVideoDashboard();
+            const res = await apiService.getVideoDashboard(requestedDoc);
             if (res && res.success) {
                 setData(res);
                 setError(null);
@@ -34,17 +33,19 @@ const VideoGenerationDashboard = () => {
                     setExpandedDocs(expanded);
                 }
             } else {
-                // API returned but not success — show empty state without error
+                // API returned but not success — show empty state with message
                 setData({ summary: {}, documents: [], batch_status: {} });
+                setError(res?.error || res?.detail || 'API returned unsuccessful response');
             }
         } catch (err) {
             console.warn('Video dashboard fetch failed:', err.message);
-            // Show empty state instead of blocking the whole page
+            // Show the actual error so users know what went wrong
+            setError(`Failed to load dashboard: ${err.message}`);
             setData({ summary: {}, documents: [], batch_status: {} });
         } finally {
             setLoading(false);
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [requestedDoc]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         fetchDashboard();

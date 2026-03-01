@@ -782,8 +782,9 @@ export const apiService = {
   },
 
   // ── Video Generation Dashboard ──
-  async getVideoDashboard() {
-    return authenticatedFetch('/api/avatar-video/dashboard');
+  async getVideoDashboard(docName = '') {
+    const params = docName ? `?doc_name=${encodeURIComponent(docName)}` : '';
+    return authenticatedFetch(`/api/avatar-video/dashboard${params}`);
   },
 
   async startBatchGeneration() {
