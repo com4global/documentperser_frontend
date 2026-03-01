@@ -1,7 +1,8 @@
 // Application constants
 export const APP_CONFIG = {
-  API_URL: process.env.REACT_APP_API_URL || 'https://ragsystem-api1.vercel.app',
-  // Production: 'https://ragsystem-api1.vercel.app',
+  API_URL: process.env.REACT_APP_API_URL || 'https://ragsysetm-backendpart.onrender.com',
+  // Render (persistent server — supports video generation)
+  // Old Vercel: 'https://ragsystem-api1.vercel.app',
   REFRESH_INTERVAL: 10000, // 10 seconds
   MAX_FILE_SIZE: 3 * 1024 * 1024, // 3MB — safe default (free tier), overridden by plan limits when loaded
   NOTIFICATION_DURATION: 5000,
