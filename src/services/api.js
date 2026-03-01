@@ -801,6 +801,42 @@ export const apiService = {
   async resumeBatchGeneration() {
     return authenticatedFetch('/api/avatar-video/batch-resume', { method: 'POST' });
   },
+
+  // ── Per-User Video Batch Control ──────────────────────────────────────
+
+  async getMyVideoBatchStatus() {
+    return authenticatedFetch('/api/video-batch/my-status');
+  },
+
+  async toggleMyVideoGeneration() {
+    return authenticatedFetch('/api/video-batch/toggle', { method: 'POST' });
+  },
+
+  // ── Admin: Video Batch Control ────────────────────────────────────────
+
+  async adminGetAllUsersBatchStatus() {
+    return authenticatedFetch('/api/admin/video-batch/all-users');
+  },
+
+  async adminToggleUserVideoGen(userId, enabled) {
+    return authenticatedFetch('/api/admin/video-batch/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, enabled }),
+    });
+  },
+
+  async adminControlUserBatch(userId, action) {
+    return authenticatedFetch('/api/admin/video-batch/control', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, action }),
+    });
+  },
+
+  async adminGetReplicateUsage() {
+    return authenticatedFetch('/api/admin/replicate-usage');
+  },
 };
 
 export default apiService;

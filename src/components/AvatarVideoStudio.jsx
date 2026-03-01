@@ -826,6 +826,8 @@ export default function AvatarVideoStudio() {
                                         ref={videoRef}
                                         controls
                                         autoPlay
+                                        playsInline
+                                        preload="auto"
                                         src={resolveVideoUrl(videoUrl)}
                                         onTimeUpdate={handleTimeUpdate}
                                         onLoadedMetadata={handleLoadedMetadata}
@@ -849,8 +851,16 @@ export default function AvatarVideoStudio() {
                                                     } ${i < activeSceneIndex ? 'past' : ''}`}
                                                 onClick={() => {
                                                     if (videoRef.current) {
+                                                        videoRef.current.pause();
                                                         videoRef.current.currentTime = st.start_time;
-                                                        videoRef.current.play();
+                                                        setActiveSceneIndex(i);
+                                                        setActiveSlideIndex(i);
+                                                        // Wait for seek to complete before playing
+                                                        const onSeeked = () => {
+                                                            videoRef.current.removeEventListener('seeked', onSeeked);
+                                                            videoRef.current.play().catch(() => { });
+                                                        };
+                                                        videoRef.current.addEventListener('seeked', onSeeked);
                                                     }
                                                 }}
                                             >
@@ -953,8 +963,15 @@ export default function AvatarVideoStudio() {
                                                         className={`slide-dot ${i === activeSlideIndex ? 'active' : ''}`}
                                                         onClick={() => {
                                                             if (videoRef.current && sceneTimings[i]) {
+                                                                videoRef.current.pause();
                                                                 videoRef.current.currentTime = sceneTimings[i].start_time;
-                                                                videoRef.current.play();
+                                                                setActiveSceneIndex(i);
+                                                                setActiveSlideIndex(i);
+                                                                const onSeeked = () => {
+                                                                    videoRef.current.removeEventListener('seeked', onSeeked);
+                                                                    videoRef.current.play().catch(() => { });
+                                                                };
+                                                                videoRef.current.addEventListener('seeked', onSeeked);
                                                             }
                                                         }}
                                                         title={`Scene ${i + 1}`}
@@ -969,6 +986,8 @@ export default function AvatarVideoStudio() {
                                         <video
                                             ref={videoRef}
                                             autoPlay
+                                            playsInline
+                                            preload="auto"
                                             src={resolveVideoUrl(videoUrl)}
                                             onTimeUpdate={handleTimeUpdate}
                                             onLoadedMetadata={handleLoadedMetadata}

@@ -1106,7 +1106,37 @@ function ChatInterface() {
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [showPageExtractor, setShowPageExtractor] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const API_URL = APP_CONFIG.API_URL || 'http://localhost:10001';
+
+  // Fetch user profile + detect admin
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!s?.user?.id) return;
+        const { data: profile } = await supabase.from('profiles')
+          .select('full_name, role, email')
+          .eq('id', s.user.id)
+          .single();
+        setUserProfile({
+          email: s.user.email,
+          fullName: profile?.full_name || s.user.user_metadata?.full_name || '',
+          role: profile?.role || 'student',
+          id: s.user.id,
+        });
+        // Check admin status — try /api/admin/stats, if 403 → not admin
+        try {
+          const res = await fetch(`${API_URL}/api/admin/stats`, {
+            headers: { Authorization: `Bearer ${s.access_token}` }
+          });
+          setIsAdmin(res.ok);
+        } catch { setIsAdmin(false); }
+      } catch { /* silent */ }
+    };
+    fetchProfile();
+  }, [API_URL]);
 
   // Load subscription plan on mount
   useEffect(() => {
@@ -1325,12 +1355,13 @@ function ChatInterface() {
       {/* Left Dock — Classroom + Avatar Studio */}
       <SideDock
         role={userRole || 'student'}
+        isAdmin={isAdmin}
         onClassroom={() => navigate(userRole === 'teacher' ? '/teacher' : '/student')}
         onAvatarStudio={() => { console.log('[SideDock] navigating to /avatar-studio'); window.location.href = '/avatar-studio'; }}
       />
 
-      {/* MAIN CONTENT — full width */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+      {/* MAIN CONTENT — leave room for both docks */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', marginLeft: '78px', marginRight: '78px' }}>
         <>
           {/* Chat Header — polished gradient */}
           <div style={{
@@ -1376,7 +1407,42 @@ function ChatInterface() {
                 </button>
               </div>
             </div>
-            <LanguageSwitcher />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <LanguageSwitcher />
+              {/* Profile Info */}
+              {userProfile && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  background: 'rgba(255,255,255,0.12)', borderRadius: '12px',
+                  padding: '6px 14px', backdropFilter: 'blur(8px)',
+                }}>
+                  <div style={{
+                    width: '30px', height: '30px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #f59e0b, #ec4899)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '14px', fontWeight: 700, color: '#fff',
+                    textTransform: 'uppercase',
+                  }}>
+                    {(userProfile.fullName || userProfile.email || '?')[0]}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#fff', lineHeight: 1.2 }}>
+                      {userProfile.fullName || 'User'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.65)', lineHeight: 1.2 }}>
+                      {userProfile.email}
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <span style={{
+                      padding: '2px 6px', borderRadius: '4px', fontSize: '9px',
+                      fontWeight: 700, background: 'rgba(245,158,11,0.3)', color: '#fbbf24',
+                      letterSpacing: '0.05em',
+                    }}>ADMIN</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Messages Area */}
@@ -1388,7 +1454,7 @@ function ChatInterface() {
             flexDirection: 'column',
             gap: '24px',
             paddingBottom: '24px',
-            paddingRight: '82px'   /* clears the right-side dock */
+            paddingRight: '24px'
           }}>
             {messages.map((msg) => (
               <MessageBubble
@@ -1682,14 +1748,6 @@ function ChatInterface() {
           </div>
         </>
       </div>
-
-      {/* Side Dock — left, for teachers AND students (also 'user' / 'all' fallback) */}
-      {(['teacher', 'student', 'user', 'all'].includes(effectiveRole)) && (
-        <SideDock
-          role={effectiveRole === 'student' ? 'student' : 'teacher'}
-          onClassroom={() => navigate(effectiveRole === 'student' ? '/student' : '/teacher')}
-        />
-      )}
 
       {/* macOS Dock — fixed at bottom */}
       <MacDock

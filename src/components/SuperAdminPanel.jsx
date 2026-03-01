@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import AdminVideoBatchPanel from './AdminVideoBatchPanel';
 
 import { APP_CONFIG } from '../utils/constants';
 
@@ -64,6 +65,7 @@ export default function SuperAdminPanel() {
     const [detailLoading, setDetailLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(null);
     const [toast, setToast] = useState(null);
+    const [showVideoPanel, setShowVideoPanel] = useState(true);
 
     const getToken = useCallback(async () => {
         const { data: { session: s } } = await (await import('../supabaseClient')).supabase.auth.getSession();
@@ -316,6 +318,21 @@ export default function SuperAdminPanel() {
                             </div>
                         </div>
                     )}
+
+                    {/* Presentation / Video Control */}
+                    <div style={{ ...s.card, marginBottom: '24px' }}>
+                        <h3
+                            style={{ ...s.sectionTitle, cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => setShowVideoPanel(!showVideoPanel)}
+                        >
+                            <span style={{ marginRight: '8px' }}>🎬</span>
+                            Presentation Video Control
+                            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#7c7c9a' }}>
+                                {showVideoPanel ? '▲ Collapse' : '▼ Expand'}
+                            </span>
+                        </h3>
+                        {showVideoPanel && <AdminVideoBatchPanel />}
+                    </div>
 
                     {/* Search */}
                     <div style={{ marginBottom: '20px' }}>

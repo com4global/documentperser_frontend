@@ -134,6 +134,8 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploadi
     }
   };
 
+  const isFreeOrRestricted = planLimits && planLimits.allowedFileTypes !== 'all';
+
   return (
     <div className="multimodal-uploader">
       {/* Tab Navigation */}
@@ -144,24 +146,38 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploadi
         >
           <span className="tab-icon">📄</span>
           <span className="tab-label">{t('tabDocs')}</span>
-          <span className="tab-badge">{supportedFormats.length} formats</span>
+          <span className="tab-badge">{isFreeOrRestricted ? 'PDF only' : `${supportedFormats.length} formats`}</span>
         </button>
         <button
           className={`upload-tab ${activeTab === 'media' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('media'); resetFileInput(); }}
+          onClick={() => {
+            if (isFreeOrRestricted) {
+              if (onUpgradeNeeded) onUpgradeNeeded('Media uploads (video, audio, images) are available on Pro plan and above. Upgrade to access all formats.');
+              return;
+            }
+            setActiveTab('media'); resetFileInput();
+          }}
+          style={isFreeOrRestricted ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
         >
-          <span className="tab-icon">🎬</span>
+          <span className="tab-icon">{isFreeOrRestricted ? '🔒' : '🎬'}</span>
           <span className="tab-label">{t('tabMedia')}</span>
-          <span className="tab-badge">4 types</span>
+          <span className="tab-badge">{isFreeOrRestricted ? 'Pro+' : '4 types'}</span>
         </button>
         {onIngestUrl && (
           <button
             className={`upload-tab ${activeTab === 'weburl' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('weburl'); resetFileInput(); }}
+            onClick={() => {
+              if (isFreeOrRestricted) {
+                if (onUpgradeNeeded) onUpgradeNeeded('Web URL ingestion is available on Pro plan and above. Upgrade to analyze web pages.');
+                return;
+              }
+              setActiveTab('weburl'); resetFileInput();
+            }}
+            style={isFreeOrRestricted ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
           >
-            <span className="tab-icon">🌐</span>
+            <span className="tab-icon">{isFreeOrRestricted ? '🔒' : '🌐'}</span>
             <span className="tab-label">{t('analyzeUrl') || 'Web URL'}</span>
-            <span className="tab-badge">Any URL</span>
+            <span className="tab-badge">{isFreeOrRestricted ? 'Pro+' : 'Any URL'}</span>
           </button>
         )}
       </div>
@@ -236,7 +252,11 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploadi
                 ref={fileInputRef}
                 id="docFile"
                 type="file"
-                onChange={onFileSelect}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleFileValidation(e.target.files[0]);
+                  }
+                }}
                 accept={supportedFormats.join(',')}
                 style={{ display: 'none' }}
               />
@@ -424,7 +444,11 @@ const MultimodalUploader = ({ onUpload, onUploadAndProcess, onIngestUrl, uploadi
                     ref={fileInputRef}
                     id="mediaFile"
                     type="file"
-                    onChange={onFileSelect}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileValidation(e.target.files[0]);
+                      }
+                    }}
                     accept={MEDIA_TYPES[mediaType].formats.join(',')}
                     style={{ display: 'none' }}
                   />

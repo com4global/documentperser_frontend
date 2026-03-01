@@ -15,6 +15,9 @@ const VideoGenerationDashboard = () => {
     const [expandedDocs, setExpandedDocs] = useState({});
     const [batchStarting, setBatchStarting] = useState(false);
     const [dismissedBanner, setDismissedBanner] = useState(false);
+    const [videoGenEnabled, setVideoGenEnabled] = useState(false);
+    const [myCredits, setMyCredits] = useState(null);
+    const [toggleLoading, setToggleLoading] = useState(false);
     const pollRef = useRef(null);
     const highlightRef = useRef(null);
 
@@ -30,9 +33,14 @@ const VideoGenerationDashboard = () => {
                     res.documents.forEach(d => { expanded[d.doc_name] = true; });
                     setExpandedDocs(expanded);
                 }
+            } else {
+                // API returned but not success — show empty state without error
+                setData({ summary: {}, documents: [], batch_status: {} });
             }
         } catch (err) {
-            setError(err.message);
+            console.warn('Video dashboard fetch failed:', err.message);
+            // Show empty state instead of blocking the whole page
+            setData({ summary: {}, documents: [], batch_status: {} });
         } finally {
             setLoading(false);
         }
@@ -40,6 +48,13 @@ const VideoGenerationDashboard = () => {
 
     useEffect(() => {
         fetchDashboard();
+        // Also fetch user's video gen status
+        apiService.getMyVideoBatchStatus().then(res => {
+            if (res?.success) {
+                setVideoGenEnabled(res.video_generation_enabled);
+                setMyCredits(res.replicate_usage);
+            }
+        }).catch(() => { });
     }, [fetchDashboard]);
 
     // Auto-refresh every 5 seconds when batch is running
@@ -121,6 +136,20 @@ const VideoGenerationDashboard = () => {
 
     const handlePlayVideo = (topic) => {
         navigate(`/avatar-studio?topic=${encodeURIComponent(topic)}`);
+    };
+
+    const handleToggleVideoGen = async () => {
+        setToggleLoading(true);
+        try {
+            const res = await apiService.toggleMyVideoGeneration();
+            if (res?.success) {
+                setVideoGenEnabled(res.video_generation_enabled);
+            }
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setToggleLoading(false);
+        }
     };
 
     if (loading) {
@@ -263,6 +292,47 @@ const VideoGenerationDashboard = () => {
                     <div style={{ ...styles.summaryValue, color: '#f59e0b' }}>{summary.topics_without_video || 0}</div>
                     <div style={styles.summaryLabel}>Pending</div>
                 </div>
+            </div>
+
+            {/* Video Generation Control Banner */}
+            <div style={{
+                background: videoGenEnabled ? 'rgba(34,197,94,0.08)' : 'rgba(251,191,36,0.08)',
+                border: `1px solid ${videoGenEnabled ? 'rgba(34,197,94,0.3)' : 'rgba(251,191,36,0.3)'}`,
+                borderRadius: 14, padding: '16px 20px', marginBottom: 20,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 16, flexWrap: 'wrap',
+            }}>
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#e0e0f0', marginBottom: 4 }}>
+                        {videoGenEnabled ? '✅ Video Generation Enabled' : '⏸️ Video Generation Disabled'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                        {videoGenEnabled
+                            ? 'Videos will be auto-generated for your uploaded documents.'
+                            : 'Enable to start generating presentation videos for your topics. You can start/stop anytime.'}
+                    </div>
+                    {myCredits && (
+                        <div style={{ fontSize: '0.7rem', color: '#f59e0b', marginTop: 4 }}>
+                            💰 Replicate Credits Used: {myCredits.total_credits?.toFixed(2) || '0.00'} ({myCredits.total_calls || 0} calls)
+                        </div>
+                    )}
+                </div>
+                <button
+                    onClick={handleToggleVideoGen}
+                    disabled={toggleLoading}
+                    style={{
+                        padding: '8px 20px', borderRadius: 10, border: 'none',
+                        background: videoGenEnabled
+                            ? 'rgba(239,68,68,0.15)'
+                            : 'linear-gradient(135deg, #22c55e, #16a34a)',
+                        color: videoGenEnabled ? '#fca5a5' : '#fff',
+                        fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem',
+                        transition: 'all 0.2s',
+                        opacity: toggleLoading ? 0.5 : 1,
+                    }}
+                >
+                    {toggleLoading ? '...' : videoGenEnabled ? '⏸ Disable' : '▶ Enable Video Gen'}
+                </button>
             </div>
 
             {/* Progress Bar */}

@@ -148,10 +148,14 @@ const LEFT_DOCK_ITEMS = {
  *   role        – 'teacher' | 'student'
  *   onClassroom – () => void
  */
-export function SideDock({ role = 'student', onClassroom, onAvatarStudio }) {
+export function SideDock({ role = 'student', isAdmin = false, onClassroom, onAvatarStudio }) {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [bouncingId, setBouncingId] = useState(null);
-    const items = LEFT_DOCK_ITEMS[role] || LEFT_DOCK_ITEMS.student;
+    const baseItems = LEFT_DOCK_ITEMS[role] || LEFT_DOCK_ITEMS.student;
+    // Dynamically add Super Admin button for admins
+    const items = isAdmin
+        ? [...baseItems, { id: 'super-admin', emoji: '🛡️', label: 'Super Admin', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' }]
+        : baseItems;
 
     const getScale = (index) => {
         if (hoveredIndex === null) return 1;
@@ -166,6 +170,9 @@ export function SideDock({ role = 'student', onClassroom, onAvatarStudio }) {
         if (item.id === 'avatar-studio') {
             console.log('[SideDock] navigating to /video-dashboard via window.location');
             window.location.href = '/video-dashboard';
+        }
+        if (item.id === 'super-admin') {
+            window.location.href = '/super-admin';
         }
     };
 
