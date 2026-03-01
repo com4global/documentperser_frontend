@@ -246,7 +246,6 @@ export const translations = {
         avatarStudioTitle: "Avatar Studio",
         avatarStudioDesc: "HD AI avatar with professional lip-sync narration & scene panel",
         lipSync: "LIP-SYNC",
-        backToTopics: "Back to Topics",
         backToModes: "Back to Learning Modes",
         markAsWatched: "Mark as Watched",
         completeAndClose: "Complete & Close"
@@ -499,7 +498,6 @@ export const translations = {
         avatarStudioTitle: "Avatar Studio",
         avatarStudioDesc: "HD AI avatar professional lip-sync narration & scene panel-உடன்",
         lipSync: "LIP-SYNC",
-        backToTopics: "Topics-க்கு திரும்பு",
         backToModes: "Learning Modes-க்கு திரும்பு",
         markAsWatched: "Watched-ஆ Mark பண்ணு",
         completeAndClose: "Complete & Close"

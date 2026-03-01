@@ -1,7 +1,5 @@
 // src/components/SuperAdminPanel.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { apiService } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AdminVideoBatchPanel from './AdminVideoBatchPanel';
 
@@ -52,7 +50,6 @@ const formatCost = (cost) => {
 };
 
 export default function SuperAdminPanel() {
-    const { session } = useAuth();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [stats, setStats] = useState(null);
