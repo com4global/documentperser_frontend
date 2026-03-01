@@ -105,8 +105,13 @@ const VideoGenerationDashboard = () => {
     const handleStartBatch = async () => {
         setBatchStarting(true);
         try {
-            await apiService.startBatchGeneration();
-            setTimeout(fetchDashboard, 2000);
+            const res = await apiService.startBatchGeneration();
+            if (res?.success) {
+                setError(null);
+                setTimeout(fetchDashboard, 2000);
+            } else {
+                setError(res?.error || res?.message || 'Batch generation failed');
+            }
         } catch (err) {
             setError(err.message);
         } finally {
