@@ -201,13 +201,24 @@ export default function AdminVideoBatchPanel() {
                                                     🟢 RUNNING {user.batch_completed || 0}/{user.batch_total || 0}
                                                 </span>
                                             )}
+                                            {!user.batch_running && user.batch_paused && (
+                                                <span style={{
+                                                    ...styles.activeBadge,
+                                                    background: 'rgba(245,158,11,0.2)',
+                                                    color: '#fbbf24',
+                                                }}>
+                                                    ⏸️ PAUSED
+                                                </span>
+                                            )}
                                             {!user.batch_running && user.active_jobs > 0 && (
                                                 <span style={styles.activeBadge}>
                                                     {user.active_jobs} active
                                                 </span>
                                             )}
                                             <span style={styles.completedCount}>
-                                                {user.completed_jobs} / {user.total_jobs}
+                                                {user.ai_videos_completed > 0
+                                                    ? `🎬 ${user.ai_videos_completed} videos`
+                                                    : `${user.completed_jobs} / ${user.total_jobs}`}
                                             </span>
                                             {user.failed_jobs > 0 && (
                                                 <span style={styles.failedBadge}>{user.failed_jobs} failed</span>
