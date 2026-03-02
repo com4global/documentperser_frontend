@@ -183,9 +183,8 @@ const VideoGenerationDashboard = () => {
     const documents = data?.documents || [];
     const batchStatus = data?.batch_status || {};
     const isRunning = batchStatus.running;
-    const isMyBatch = batchStatus.user_id === currentUserId;
-    const isCancelling = isRunning && batchStatus.cancelled;  // backend says cancelled but still finishing current topic
-    const userCancelled = batchStatus.user_cancelled;  // persistent cancel — survives backend restarts
+    const isCancelling = isRunning && batchStatus.cancelled;
+    const userCancelled = batchStatus.user_cancelled;
     const isPaused = (batchStatus.paused || userCancelled) && !isRunning;
     const hasPending = (summary.topics_without_video || 0) > 0;
 
@@ -198,7 +197,7 @@ const VideoGenerationDashboard = () => {
                     <h1 style={styles.title}>🎬 Video Generation Dashboard</h1>
                 </div>
                 <div style={styles.headerRight}>
-                    {isRunning && isMyBatch ? (
+                    {isRunning ? (
                         <button
                             style={{
                                 ...styles.cancelBtn,
@@ -209,10 +208,6 @@ const VideoGenerationDashboard = () => {
                         >
                             {isCancelling ? '⏳ Cancelling...' : '⏹ Cancel Batch'}
                         </button>
-                    ) : isRunning && !isMyBatch ? (
-                        <span style={{ color: '#a78bfa', fontSize: '0.8rem', opacity: 0.7 }}>
-                            ⏳ Batch running for another user
-                        </span>
                     ) : (
                         <button
                             style={{
