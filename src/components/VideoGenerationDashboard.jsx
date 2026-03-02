@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiService from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const VideoGenerationDashboard = () => {
     const navigate = useNavigate();
+    const { session } = useAuth();
+    const currentUserId = session?.user?.id || '';
     const [searchParams] = useSearchParams();
     const requestedTopic = searchParams.get('topic') || '';
     const requestedDoc = searchParams.get('doc') || '';
@@ -180,6 +183,7 @@ const VideoGenerationDashboard = () => {
     const documents = data?.documents || [];
     const batchStatus = data?.batch_status || {};
     const isRunning = batchStatus.running;
+    const isMyBatch = batchStatus.user_id === currentUserId;
     const isCancelling = isRunning && batchStatus.cancelled;  // backend says cancelled but still finishing current topic
     const userCancelled = batchStatus.user_cancelled;  // persistent cancel — survives backend restarts
     const isPaused = (batchStatus.paused || userCancelled) && !isRunning;
@@ -194,7 +198,7 @@ const VideoGenerationDashboard = () => {
                     <h1 style={styles.title}>🎬 Video Generation Dashboard</h1>
                 </div>
                 <div style={styles.headerRight}>
-                    {isRunning ? (
+                    {isRunning && isMyBatch ? (
                         <button
                             style={{
                                 ...styles.cancelBtn,
@@ -205,6 +209,10 @@ const VideoGenerationDashboard = () => {
                         >
                             {isCancelling ? '⏳ Cancelling...' : '⏹ Cancel Batch'}
                         </button>
+                    ) : isRunning && !isMyBatch ? (
+                        <span style={{ color: '#a78bfa', fontSize: '0.8rem', opacity: 0.7 }}>
+                            ⏳ Batch running for another user
+                        </span>
                     ) : (
                         <button
                             style={{
