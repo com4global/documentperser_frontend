@@ -47,6 +47,8 @@ export default function AvatarVideoStudio() {
 
     // ── Wizard step: 1=avatar, 2=content, 3=generate ──
     const [step, setStep] = useState(1);
+    // ── Loading state while checking for existing videos ──
+    const [checkingExisting, setCheckingExisting] = useState(!!incomingParams?.topic);
 
     // ── Avatar state ──
     const [avatars, setAvatars] = useState([]);
@@ -139,6 +141,7 @@ export default function AvatarVideoStudio() {
                         console.warn('[AvatarStudio] listAvatarVideos fallback failed:', err.message);
                     }
                 }
+                setCheckingExisting(false);
             })();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -522,7 +525,7 @@ export default function AvatarVideoStudio() {
             </header>
 
             {/* ── Step Indicator ── */}
-            {!generating && !videoUrl && (
+            {!generating && !videoUrl && !checkingExisting && (
                 <div className="step-indicator">
                     {[
                         { num: 1, label: 'Choose Avatar' },
@@ -544,10 +547,26 @@ export default function AvatarVideoStudio() {
             <div className="studio-main" style={{ padding: '28px 32px', maxWidth: videoUrl ? 1200 : 900, margin: '0 auto', width: '100%' }}>
                 {error && <div className="error-banner">⚠️ {error}</div>}
 
+                {/* Loading state while checking for existing video */}
+                {checkingExisting && (
+                    <div className="fade-in" style={{ textAlign: 'center', padding: '80px 20px' }}>
+                        <div style={{
+                            width: 48, height: 48, margin: '0 auto 20px',
+                            border: '3px solid rgba(139,92,246,0.2)',
+                            borderTop: '3px solid #8b5cf6',
+                            borderRadius: '50%',
+                            animation: 'spin 0.8s linear infinite',
+                        }} />
+                        <p style={{ color: '#a0a0c0', fontSize: '0.95rem' }}>
+                            🎬 Checking for existing video...
+                        </p>
+                    </div>
+                )}
+
                 {/* ═══════════════════════════════════════════
                     STEP 1: Choose Avatar (Photo Upload)
                     ═══════════════════════════════════════════ */}
-                {step === 1 && !generating && !videoUrl && (
+                {step === 1 && !generating && !videoUrl && !checkingExisting && (
                     <div className="fade-in">
                         {/* Mode Selector */}
                         <div className="mode-selector">
