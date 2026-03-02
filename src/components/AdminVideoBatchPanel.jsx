@@ -36,8 +36,10 @@ export default function AdminVideoBatchPanel() {
         try {
             const data = await apiService.adminGetAllUsersBatchStatus();
             if (data.success) {
-                // Sort: users with active jobs first, then by email
+                // Sort: users with batch_running first, then active jobs, then by email
                 const sorted = (data.users || []).sort((a, b) => {
+                    if (a.batch_running && !b.batch_running) return -1;
+                    if (!a.batch_running && b.batch_running) return 1;
                     if (a.active_jobs > 0 && b.active_jobs === 0) return -1;
                     if (a.active_jobs === 0 && b.active_jobs > 0) return 1;
                     return (a.email || '').localeCompare(b.email || '');
@@ -93,6 +95,7 @@ export default function AdminVideoBatchPanel() {
     const activeUsers = users.filter(u => u.video_generation_enabled).length;
     const totalJobs = users.reduce((sum, u) => sum + u.total_jobs, 0);
     const activeJobs = users.reduce((sum, u) => sum + u.active_jobs, 0);
+    const batchesRunning = users.filter(u => u.batch_running).length;
     const totalCredits = users.reduce((sum, u) => sum + (u.replicate_credits || 0), 0);
 
     return (
@@ -106,6 +109,10 @@ export default function AdminVideoBatchPanel() {
                 <div style={styles.summaryCard}>
                     <div style={{ ...styles.summaryValue, color: '#22c55e' }}>{activeUsers}</div>
                     <div style={styles.summaryLabel}>Video Gen Enabled</div>
+                </div>
+                <div style={styles.summaryCard}>
+                    <div style={{ ...styles.summaryValue, color: batchesRunning > 0 ? '#22c55e' : '#8b5cf6' }}>{batchesRunning}</div>
+                    <div style={styles.summaryLabel}>{batchesRunning > 0 ? '● Batches Running' : 'Batches Running'}</div>
                 </div>
                 <div style={styles.summaryCard}>
                     <div style={{ ...styles.summaryValue, color: '#8b5cf6' }}>{activeJobs}</div>
@@ -140,8 +147,9 @@ export default function AdminVideoBatchPanel() {
                                 <tr
                                     style={{
                                         ...styles.tr,
-                                        background: user.active_jobs > 0 ? 'rgba(139,92,246,0.08)' : 'transparent',
-                                        cursor: user.total_jobs > 0 ? 'pointer' : 'default',
+                                        background: user.batch_running ? 'rgba(34,197,94,0.1)' :
+                                            user.active_jobs > 0 ? 'rgba(139,92,246,0.08)' : 'transparent',
+                                        cursor: (user.total_jobs > 0 || user.batch_running) ? 'pointer' : 'default',
                                     }}
                                     onClick={() => user.total_jobs > 0 && setExpandedUser(
                                         expandedUser === user.user_id ? null : user.user_id
@@ -184,7 +192,16 @@ export default function AdminVideoBatchPanel() {
                                     </td>
                                     <td style={styles.td}>
                                         <div style={styles.jobCounts}>
-                                            {user.active_jobs > 0 && (
+                                            {user.batch_running && (
+                                                <span style={{
+                                                    ...styles.activeBadge,
+                                                    background: 'rgba(34,197,94,0.2)',
+                                                    color: '#4ade80',
+                                                }}>
+                                                    🟢 RUNNING {user.batch_completed || 0}/{user.batch_total || 0}
+                                                </span>
+                                            )}
+                                            {!user.batch_running && user.active_jobs > 0 && (
                                                 <span style={styles.activeBadge}>
                                                     {user.active_jobs} active
                                                 </span>
@@ -196,6 +213,11 @@ export default function AdminVideoBatchPanel() {
                                                 <span style={styles.failedBadge}>{user.failed_jobs} failed</span>
                                             )}
                                         </div>
+                                        {user.batch_running && user.batch_current_topic && (
+                                            <div style={{ fontSize: '0.7rem', color: '#4ade80', marginTop: 4 }}>
+                                                🎬 {user.batch_current_topic}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={styles.td}>
                                         <span style={styles.creditValue}>{(user.replicate_credits || 0).toFixed(2)}</span>
