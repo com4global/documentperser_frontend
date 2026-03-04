@@ -596,6 +596,22 @@
     align-items: flex-start;
 }
 
+/* Fullscreen mode */
+.video-text-split.video-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: none;
+    z-index: 9999;
+    background: #0a0a1a;
+    padding: 20px;
+    gap: 24px;
+    align-items: stretch;
+    overflow: hidden;
+}
+
 .video-player-side {
     flex: 1 1 62%;
     min-width: 0;

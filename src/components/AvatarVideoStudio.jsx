@@ -82,6 +82,10 @@ export default function AvatarVideoStudio() {
     // ── Active scene tracking for side text panel ──
     const [activeSceneIndex, setActiveSceneIndex] = useState(0);
 
+    // ── Play/pause + fullscreen state ──
+    const [isPaused, setIsPaused] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
     // ── Load avatars on mount + handle incoming AI Teacher params ──
     useEffect(() => {
         loadAvatars();
@@ -924,7 +928,7 @@ export default function AvatarVideoStudio() {
                     ═══════════════════════════════════════════ */}
                 {!generating && videoUrl && videoMode === 'presentation' && (
                     <div className="video-preview fade-in">
-                        <div className="video-text-split">
+                        <div className={`video-text-split ${isFullscreen ? 'video-fullscreen' : ''}`}>
                             {/* Left: Presentation Slide Viewer + PiP Avatar */}
                             <div className="video-player-side">
                                 <div className="presentation-container">
@@ -982,15 +986,25 @@ export default function AvatarVideoStudio() {
                                                         className={`slide-dot ${i === activeSlideIndex ? 'active' : ''}`}
                                                         onClick={() => {
                                                             if (videoRef.current && sceneTimings[i]) {
+                                                                // Pause and reset src to kill any buffered audio
                                                                 videoRef.current.pause();
-                                                                videoRef.current.currentTime = sceneTimings[i].start_time;
+                                                                const src = videoRef.current.src;
+                                                                videoRef.current.src = '';
+                                                                videoRef.current.src = src;
                                                                 setActiveSceneIndex(i);
                                                                 setActiveSlideIndex(i);
-                                                                const onSeeked = () => {
-                                                                    videoRef.current.removeEventListener('seeked', onSeeked);
-                                                                    videoRef.current.play().catch(() => { });
+                                                                const onLoaded = () => {
+                                                                    videoRef.current.removeEventListener('loadeddata', onLoaded);
+                                                                    videoRef.current.currentTime = sceneTimings[i].start_time;
+                                                                    const onSeeked = () => {
+                                                                        videoRef.current.removeEventListener('seeked', onSeeked);
+                                                                        videoRef.current.play().catch(() => { });
+                                                                        setIsPaused(false);
+                                                                    };
+                                                                    videoRef.current.addEventListener('seeked', onSeeked);
                                                                 };
-                                                                videoRef.current.addEventListener('seeked', onSeeked);
+                                                                videoRef.current.addEventListener('loadeddata', onLoaded);
+                                                                videoRef.current.load();
                                                             }
                                                         }}
                                                         title={`Scene ${i + 1}`}
@@ -1019,11 +1033,17 @@ export default function AvatarVideoStudio() {
                                             className="pres-ctrl-btn"
                                             onClick={() => {
                                                 if (videoRef.current) {
-                                                    videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+                                                    if (videoRef.current.paused) {
+                                                        videoRef.current.play().catch(() => { });
+                                                        setIsPaused(false);
+                                                    } else {
+                                                        videoRef.current.pause();
+                                                        setIsPaused(true);
+                                                    }
                                                 }
                                             }}
                                         >
-                                            {videoRef.current?.paused ? '▶️' : '⏸️'}
+                                            {isPaused ? '▶️' : '⏸️'}
                                         </button>
                                         <input
                                             type="range"
@@ -1043,6 +1063,13 @@ export default function AvatarVideoStudio() {
                                             }}
                                         >
                                             🔊
+                                        </button>
+                                        <button
+                                            className="pres-ctrl-btn"
+                                            onClick={() => setIsFullscreen(f => !f)}
+                                            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                                        >
+                                            {isFullscreen ? '⛶' : '⛶'}
                                         </button>
                                     </div>
                                 </div>

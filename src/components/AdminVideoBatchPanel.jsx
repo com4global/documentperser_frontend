@@ -135,7 +135,6 @@ export default function AdminVideoBatchPanel() {
                         <tr>
                             <th style={styles.th}>User</th>
                             <th style={styles.th}>Role</th>
-                            <th style={styles.th}>Video Gen</th>
                             <th style={styles.th}>Jobs</th>
                             <th style={styles.th}>Credits</th>
                             <th style={styles.th}>Controls</th>
@@ -171,24 +170,6 @@ export default function AdminVideoBatchPanel() {
                                         }}>
                                             {user.role || 'unset'}
                                         </span>
-                                    </td>
-                                    <td style={styles.td}>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleToggle(user.user_id, user.video_generation_enabled); }}
-                                            disabled={actionLoading === user.user_id}
-                                            style={{
-                                                ...styles.toggleBtn,
-                                                background: user.video_generation_enabled
-                                                    ? 'linear-gradient(135deg, #22c55e, #16a34a)'
-                                                    : 'rgba(255,255,255,0.08)',
-                                                color: user.video_generation_enabled ? '#fff' : '#9ca3af',
-                                                border: user.video_generation_enabled
-                                                    ? 'none'
-                                                    : '1px solid rgba(255,255,255,0.15)',
-                                            }}
-                                        >
-                                            {user.video_generation_enabled ? '✅ ON' : '⏸️ OFF'}
-                                        </button>
                                     </td>
                                     <td style={styles.td}>
                                         <div style={styles.jobCounts}>
@@ -235,22 +216,28 @@ export default function AdminVideoBatchPanel() {
                                     </td>
                                     <td style={styles.td}>
                                         <div style={styles.controlBtns} onClick={(e) => e.stopPropagation()}>
-                                            <button
-                                                style={styles.startBtn}
-                                                onClick={() => handleControl(user.user_id, 'start')}
-                                                disabled={actionLoading === user.user_id}
-                                                title="Start video generation"
-                                            >
-                                                ▶ Start
-                                            </button>
-                                            <button
-                                                style={styles.stopBtn}
-                                                onClick={() => handleControl(user.user_id, 'stop')}
-                                                disabled={actionLoading === user.user_id}
-                                                title="Stop video generation"
-                                            >
-                                                ⏹ Stop
-                                            </button>
+                                            {user.batch_running ? (
+                                                <button
+                                                    style={{
+                                                        ...styles.stopBtn,
+                                                        animation: 'pulse 1.5s infinite',
+                                                    }}
+                                                    onClick={() => handleControl(user.user_id, 'stop')}
+                                                    disabled={actionLoading === user.user_id}
+                                                    title="Stop running batch"
+                                                >
+                                                    ⏹ Stop
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    style={styles.startBtn}
+                                                    onClick={() => handleControl(user.user_id, 'start')}
+                                                    disabled={actionLoading === user.user_id}
+                                                    title="Start video generation"
+                                                >
+                                                    ▶ {user.batch_paused ? 'Resume' : 'Start'}
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

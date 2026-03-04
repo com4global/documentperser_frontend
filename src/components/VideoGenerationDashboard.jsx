@@ -358,15 +358,33 @@ const VideoGenerationDashboard = () => {
                         Overall Progress
                         {isRunning && <span style={styles.liveIndicator}> ● LIVE</span>}
                     </span>
-                    <span style={styles.progressPercent}>{summary.completion_percent || 0}%</span>
+                    <span style={styles.progressPercent}>{(() => {
+                        const dbPercent = summary.completion_percent || 0;
+                        const batchPercent = batchStatus.total > 0
+                            ? Math.round((batchStatus.completed || 0) / batchStatus.total * 100)
+                            : 0;
+                        return Math.max(dbPercent, batchPercent);
+                    })()}%</span>
                 </div>
                 <div style={styles.progressTrack}>
                     <div style={{
                         ...styles.progressBar,
-                        width: `${summary.completion_percent || 0}%`,
-                        background: (summary.completion_percent || 0) === 100
-                            ? 'linear-gradient(90deg, #22c55e, #16a34a)'
-                            : 'linear-gradient(90deg, #8b5cf6, #6366f1)',
+                        width: `${(() => {
+                            const dbPercent = summary.completion_percent || 0;
+                            const batchPercent = batchStatus.total > 0
+                                ? Math.round((batchStatus.completed || 0) / batchStatus.total * 100)
+                                : 0;
+                            return Math.max(dbPercent, batchPercent);
+                        })()}%`,
+                        background: (() => {
+                            const dbPercent = summary.completion_percent || 0;
+                            const batchPercent = batchStatus.total > 0
+                                ? Math.round((batchStatus.completed || 0) / batchStatus.total * 100)
+                                : 0;
+                            return Math.max(dbPercent, batchPercent) === 100
+                                ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                                : 'linear-gradient(90deg, #8b5cf6, #6366f1)';
+                        })(),
                     }} />
                 </div>
                 {/* Batch status message */}
