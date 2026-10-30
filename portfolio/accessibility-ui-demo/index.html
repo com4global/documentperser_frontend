@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessible Public Services | UI/UX Demo</title>
+<style>
+:root{font-family:system-ui,Segoe UI,sans-serif;color:#182d43;background:#f3f6fa}
+*{box-sizing:border-box}body{margin:0;line-height:1.5}
+.skip{position:absolute;top:-5rem;left:1rem;background:#fff;padding:.7rem;z-index:5}.skip:focus{top:.5rem}
+:focus-visible{outline:3px solid #f59e0b;outline-offset:3px}
+header{background:#153d65;color:white;padding:1.2rem max(1rem,calc((100% - 1080px)/2))}
+header strong{font-size:1.4rem}nav{display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:.6rem}
+nav a{color:white;font-weight:600}
+main{max-width:1080px;margin:auto;padding:2rem 1rem}h1{font-size:2rem;margin-bottom:.2rem}
+.lead{color:#41586d}.notice{border-left:5px solid #215eaf;background:#e6f0ff;padding:1rem;margin:1.5rem 0}
+.panel,.item{background:white;border:1px solid #c6d1df;border-radius:.6rem;padding:1.2rem}
+form{display:grid;grid-template-columns:2fr 1fr auto;gap:1rem;align-items:end}
+label{display:block;font-weight:700;margin-bottom:.4rem}
+input,select,button{font:inherit;padding:.7rem;border-radius:.35rem}
+input,select{width:100%;border:2px solid #52687e}
+button{background:#1654a2;color:#fff;border:2px solid #1654a2;font-weight:700;cursor:pointer}
+button:hover{background:#0e3e78}
+small{display:block;color:#455b70;margin-top:.3rem}.result-head{display:flex;justify-content:space-between;gap:1rem;align-items:center;margin-top:1.5rem}
+#results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1rem 0}
+.item h3{margin:.1rem 0}.tag{display:inline-block;background:#e5f2ed;color:#145036;padding:.15rem .5rem;border-radius:1rem;font-size:.8rem}
+.item p{color:#46596d}footer{padding:1.6rem;text-align:center;border-top:1px solid #c6d1df}
+@media(max-width:680px){form,#results{grid-template-columns:1fr}.result-head{display:block}main{padding:1.5rem 1rem}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header><strong>Public Services Portal</strong><nav aria-label="Main navigation"><a href="#main">Services</a><a href="#search-title">Find a service</a><a href="#about">About this demo</a></nav></header>
+<main id="main">
+<h1>Find public services</h1>
+<p class="lead">A responsive, keyboard-friendly service directory demonstration.</p>
+<div class="notice" role="note"><strong>Portfolio demonstration — fictional data.</strong> This page is not an official government website.</div>
+<section class="panel" aria-labelledby="search-title">
+<h2 id="search-title">Search services</h2>
+<form id="search-form" role="search">
+<div><label for="query">Service name or keyword</label><input id="query" name="query" type="search" aria-describedby="query-help" placeholder="e.g., license, benefits"><small id="query-help">Searches the sample service title and description.</small></div>
+<div><label for="category">Category</label><select id="category" name="category"><option value="">All categories</option><option value="Transportation">Transportation</option><option value="Health">Health</option><option value="Community">Community</option></select></div>
+<button type="submit">Search</button>
+</form>
+</section>
+<div class="result-head"><h2 id="results-title">Available services</h2><p id="status" role="status" aria-live="polite" aria-atomic="true"></p></div>
+<section id="results" aria-labelledby="results-title"></section>
+<section id="about" class="panel"><h2>Accessibility design decisions</h2><p>Includes a skip link, semantic landmarks, visible keyboard focus, explicit form labels, responsive layout, and a polite live-region result announcement. Full WCAG 2.1 AA conformance has not been independently verified.</p></section>
+</main>
+<footer>Independent UI/UX and Accessibility Portfolio Demo · Not affiliated with any government agency.</footer>
+<script>
+const services=[
+{title:"Driver License Information",category:"Transportation",description:"Learn about identification and licensing requirements."},
+{title:"Vehicle Registration",category:"Transportation",description:"Find information about registering a vehicle."},
+{title:"Community Health Resources",category:"Health",description:"Find general community health support resources."},
+{title:"Benefits Information",category:"Community",description:"Browse general benefits and assistance information."}
+];
+const list=document.getElementById("results");
+const status=document.getElementById("status");
+function showResults(){
+ const q=document.getElementById("query").value.trim().toLowerCase();
+ const category=document.getElementById("category").value;
+ const matches=services.filter(s=>(!category||s.category===category)&&(!q||(s.title+" "+s.description).toLowerCase().includes(q)));
+ list.replaceChildren();
+ for(const service of matches){
+   const article=document.createElement("article");article.className="item";
+   const heading=document.createElement("h3");heading.textContent=service.title;
+   const tag=document.createElement("span");tag.className="tag";tag.textContent=service.category;
+   const desc=document.createElement("p");desc.textContent=service.description;
+   article.append(heading,tag,desc);list.append(article);
+ }
+ if(!matches.length){const msg=document.createElement("p");msg.textContent="No matching sample services. Try another search.";list.append(msg);}
+ status.textContent=matches.length+" "+(matches.length===1?"service":"services")+" found";
+}
+document.getElementById("search-form").addEventListener("submit",e=>{e.preventDefault();showResults();});
+document.getElementById("category").addEventListener("change",showResults);
+showResults();
+</script>
+</body>
+</html>
